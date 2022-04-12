@@ -73,14 +73,26 @@ static void gen_expr(Node *node) {
   error("invalid expression");
 }
 
+static void gen_stmt(Node *node) {
+  if (node->kind == ND_EXPR_STMT) {
+    gen_expr(node->lhs);
+    return;
+  }
+  error("invalid statement");
+}
+
 void codegen(Node *node) {
   printf(".section	__TEXT,__text,regular,pure_instructions\n");
   printf(".build_version macos, 12, 0	sdk_version 12, 0\n");
   printf(".globl _main\n");
   printf("_main:\n");
 
-  gen_expr(node);
+  for (Node *n = node; n; n = n->next) {
+    // for each statement (stmt node)
+    gen_stmt(n);
+    assert(depth == 0);
+  }
 
-  printf("  ret\n");
   assert(depth == 0);
+  printf("  ret\n");
 }

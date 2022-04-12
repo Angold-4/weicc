@@ -38,22 +38,25 @@ Token *tokenize(char *input);
 //
 
 typedef enum {
-  ND_ADD, // +
-  ND_SUB, // -
-  ND_MUL, // *
-  ND_DIV, // /
-  ND_NEG, // unary -
-  ND_EQ,  // ==
-  ND_NE,  // !=
-  ND_LT,  // <
-  ND_LE,  // <=
-  ND_NUM, // Integer
+  ND_ADD,       // +
+  ND_SUB,       // -
+  ND_MUL,       // *
+  ND_DIV,       // /
+  ND_NEG,       // unary -
+  ND_EQ,        // ==
+  ND_NE,        // !=
+  ND_LT,        // <
+  ND_LE,        // <=
+  ND_EXPR_STMT, // Expression Statement
+  ND_NUM,       // Integer
+  ND_ERR,       // Error
 } NodeKind;
 
 // AST node type
 typedef struct Node Node;
 struct Node {
   NodeKind kind; // Node kind
+  Node *next;    // Node node (multiple exprssions)
   Node *lhs;     // Left-hand side (unary used)
   Node *rhs;     // Right-hand side
   int val;       // Used if kind == ND_NUM
