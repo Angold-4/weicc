@@ -1,5 +1,10 @@
 #include "weicc.h"
 
+
+// All local variable instances created during parsing are
+// accumulated to this list.
+Obj *locals;
+
 static Node *stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
 static Node *expr(Token **rest, Token *tok);
@@ -10,6 +15,16 @@ static Node *add(Token **rest, Token *tok);
 static Node *mul(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
+
+
+// Find a local variable by name
+static Obj *find_var(Token *tok) {
+  for (Obj *var = locals; var; var = var->next) {
+    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
+      return var; // Obj
+  }
+  return NULL;
+}
 
 static Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
@@ -36,10 +51,18 @@ static Node *new_num(int val) {
   return node;
 }
 
-static Node *new_var_node(char name) {
+static Node *new_var_node(Obj *var) {
   Node *node = new_node(ND_VAR);
-  node->name = name;
+  node->var = var;
   return node;
+}
+
+static Obj *new_lvar(char *name) {
+  Obj *var = calloc(1, sizeof(Obj));
+  var->name = name;
+  var->next = locals;
+  locals = var; // update the local variable linked list 
+  return var;
 }
 
 // avoid left recursion
@@ -183,9 +206,14 @@ static Node *primary(Token **rest, Token *tok) {
   }
 
   if (tok->kind == TK_IDENT) {
-    Node *node = new_var_node(*tok->loc); // name
+    Obj *var = find_var(tok);
+    if (!var) {
+      // a new variable
+      var = new_lvar(strndup(tok->loc, tok->len)); 
+      // strndup allocate memory for string in heap
+    }
     *rest = tok->next;
-    return node;
+    return new_var_node(var);
   }
 
   if (tok->kind == TK_NUM) {
@@ -202,11 +230,17 @@ static Node *primary(Token **rest, Token *tok) {
 // -> expr
 
 // program(Token list) = stmt*
-Node *parse(Token *tok) {
+Function *parse(Token *tok) {
   Node head = {};
   Node *cur = &head;
+
   while (tok->kind != TK_EOF) {
     cur = cur->next = stmt(&tok, tok);
   }
-  return head.next;
+
+  Function *prog = calloc(1, sizeof(Function));
+  prog->body = head.next;
+  prog->locals = locals; // local variables
+
+  return prog;
 }

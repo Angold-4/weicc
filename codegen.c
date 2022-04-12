@@ -12,13 +12,18 @@ static void pop(char *arg) {
   depth--;
 }
 
+// Round up `n` to the nearest multiple of `align`. For instance,
+// align_to(5, 8) returns 8 and align_to(11, 8) returns 16.
+static int align_to(int n, int align) {
+  return (n + align - 1) / align * align;
+}
+
 // Compute the absolute address of a given node
 // It's an error if a given node does not reside in memory
 static void gen_addr(Node* node) {
   // temporary total 26 variables (a-z)
   if (node->kind == ND_VAR) {
-    int offset = (node->name - 'a' + 3) * 8;
-    printf("  lea %d(%%rbp), %%rax\n", -offset); // address (in stack)
+    printf("  lea %d(%%rbp), %%rax\n", node->var->offset); // address (in stack)
     return;
   }
   error("not a lvalue"); // temp only variable is lvalue
@@ -37,7 +42,7 @@ static void gen_expr(Node *node) {
     return;
   case ND_VAR:
     gen_addr(node);
-    printf("  mov (%%rax), %%rax\n"); // move heap value into rax
+    printf("  mov (%%rax), %%rax\n"); // move stack address into rax
     return;
   case ND_ASSIGN:
     gen_addr(node->lhs);
@@ -108,7 +113,22 @@ static void gen_stmt(Node *node) {
   error("invalid statement");
 }
 
-void codegen(Node *node) {
+
+// Assign offsets to local variables
+static void assign_lvar_offsets(Function *prog) {
+  int offset = 0;
+  // After parsing all local variables...
+  for (Obj *var = prog->locals; var; var = var->next) {
+    offset += 8;
+    var->offset = -offset;
+  }
+  prog->stack_size = align_to(offset, 16);
+
+}
+
+void codegen(Function *prog) {
+  assign_lvar_offsets(prog);
+
   printf(".section	__TEXT,__text,regular,pure_instructions\n");
   printf(".build_version macos, 12, 0	sdk_version 12, 0\n");
   printf(".globl _main\n");
@@ -121,7 +141,7 @@ void codegen(Node *node) {
 
   printf("  pushq %%rbp\n");
   printf("  mov %%rsp, %%rbp\n"); // current base
-  printf("  sub $224, %%rsp\n");
+  printf("  sub $%d, %%rsp\n", prog->stack_size + 16);
 
   // The canaries (protect the stack)
   // please refer to this blog:
@@ -131,13 +151,13 @@ void codegen(Node *node) {
   printf("  movq  %%rax, -8(%%rbp)\n");
 
   // gen expression
-  for (Node *n = node; n; n = n->next) {
+  for (Node *n = prog->body; n; n = n->next) {
     // for each statement (stmt node)
     gen_stmt(n);
     assert(depth == 0);
   }
   
-  printf("  addq $224, %%rsp\n");
+  printf("  addq $%d, %%rsp\n", prog->stack_size + 16);
   printf("  popq %%rbp\n");
 
   assert(depth == 0);
