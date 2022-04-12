@@ -14,10 +14,11 @@ typedef struct Node Node;
 //
 
 typedef enum {
-  TK_IDENT, // Identifiers
-  TK_PUNCT, // Punctuators
-  TK_NUM,   // Numeric literals
-  TK_EOF,   // End-of-file markers
+  TK_IDENT,   // Identifiers
+  TK_PUNCT,   // Punctuators
+  TK_KEYWORD, // Keywords
+  TK_NUM,     // Numeric literals
+  TK_EOF,     // End-of-file markers
 } TokenKind;
 
 // Token type
@@ -66,6 +67,7 @@ typedef enum {
   ND_MUL,       // *
   ND_DIV,       // /
   ND_ASSIGN,    // =
+  ND_RETURN,    // "return"
   ND_NEG,       // unary -
   ND_EQ,        // ==
   ND_NE,        // !=

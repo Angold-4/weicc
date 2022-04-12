@@ -106,9 +106,17 @@ static void gen_expr(Node *node) {
 }
 
 static void gen_stmt(Node *node) {
-  if (node->kind == ND_EXPR_STMT) {
-    gen_expr(node->lhs);
-    return;
+  switch(node->kind) {
+    case ND_RETURN:
+      // unary
+      gen_expr(node->lhs); // result in rax
+      printf("  jmp .L.return\n");
+      return;
+    case ND_EXPR_STMT:
+      gen_expr(node->lhs);
+      return;
+    default:
+      break;
   }
   error("invalid statement");
 }
@@ -157,6 +165,7 @@ void codegen(Function *prog) {
     assert(depth == 0);
   }
   
+  printf(".L.return:\n");
   printf("  addq $%d, %%rsp\n", prog->stack_size + 16);
   printf("  popq %%rbp\n");
 
