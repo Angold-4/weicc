@@ -36,6 +36,8 @@ static void gen_addr(Node* node) {
 }
 
 // DFS, each iteration the value stored in the %rax
+// every time this function wants to update %rax
+// it need to store prev rax by pushing it into stack
 static void gen_expr(Node *node) {
   // unary / primary
   switch (node->kind) {
@@ -125,6 +127,27 @@ static void gen_stmt(Node *node) {
       if (node->els) {
 	gen_stmt(node->els);
       }
+      printf(".L.end.%d:\n", c);
+      return;
+    }
+
+    case ND_FOR: {
+      int c = count();
+      gen_stmt(node->init);
+      printf(".L.begin.%d:\n", c);
+      if (node->cond) {
+	gen_expr(node->cond);
+	printf("  cmp $0, %%rax\n");
+	printf("  je .L.end.%d\n", c);
+      }
+
+      gen_stmt(node->then); // for each iteration
+      
+      if (node->inc) {
+	gen_expr(node->inc);
+      }
+
+      printf("  jmp .L.begin.%d\n", c);
       printf(".L.end.%d:\n", c);
       return;
     }

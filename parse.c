@@ -69,6 +69,7 @@ static Obj *new_lvar(char *name) {
 // avoid left recursion
 // stmt = "return" expr ";"
 // 	| "if" "(" expr ")" stmt ("else" stmt)?
+// 	| "for" "(" expr_stmt expr? ";" expr? ")" stmt
 // 	| "{" compound_stmt
 //      | expr_stmt
 static Node *stmt(Token **rest, Token *tok) {
@@ -92,6 +93,30 @@ static Node *stmt(Token **rest, Token *tok) {
     }
 
     *rest = tok;
+    return node;
+  }
+
+  if (equal(tok, "for")) {
+    Node *node = new_node(ND_FOR);
+    tok = skip(tok->next, "(");
+
+    node->init = expr_stmt(&tok, tok); // only one statement
+
+    if (!equal(tok, ";")) {
+      // we have condition
+      node->cond = expr(&tok, tok);
+    }
+    tok = skip(tok, ";");
+
+    if (!equal(tok, ")")) {
+      // we have increment
+      node->inc = expr(&tok, tok);
+    }
+
+    tok = skip(tok, ")");
+
+    node->then = stmt(rest, tok);
+
     return node;
   }
 

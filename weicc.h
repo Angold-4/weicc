@@ -69,6 +69,7 @@ typedef enum {
   ND_ASSIGN,    // =
   ND_RETURN,    // "return"
   ND_IF,        // "if"
+  ND_FOR,       // "for"
   ND_BLOCK,     // { ... }
   ND_NEG,       // unary -
   ND_EQ,        // ==
@@ -97,6 +98,9 @@ struct Node {
   Node *cond;
   Node *then;
   Node *els;
+  // For statement
+  Node *init;
+  Node *inc;
 };
 
 Function *parse(Token *tok);
