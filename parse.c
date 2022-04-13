@@ -70,6 +70,7 @@ static Obj *new_lvar(char *name) {
 // stmt = "return" expr ";"
 // 	| "if" "(" expr ")" stmt ("else" stmt)?
 // 	| "for" "(" expr_stmt expr? ";" expr? ")" stmt
+// 	| "while" "(" expr ")" stmt
 // 	| "{" compound_stmt
 //      | expr_stmt
 static Node *stmt(Token **rest, Token *tok) {
@@ -117,6 +118,16 @@ static Node *stmt(Token **rest, Token *tok) {
 
     node->then = stmt(rest, tok);
 
+    return node;
+  }
+
+  if (equal(tok, "while")) {
+    // syntatic sugar
+    Node *node = new_node(ND_FOR);
+    tok = skip(tok->next, "(");
+    node->cond = expr(&tok, tok);
+    tok = skip(tok, ")");
+    node->then = stmt(rest, tok);
     return node;
   }
 

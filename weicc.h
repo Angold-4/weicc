@@ -69,7 +69,7 @@ typedef enum {
   ND_ASSIGN,    // =
   ND_RETURN,    // "return"
   ND_IF,        // "if"
-  ND_FOR,       // "for"
+  ND_FOR,       // "for" or "while"
   ND_BLOCK,     // { ... }
   ND_NEG,       // unary -
   ND_EQ,        // ==
