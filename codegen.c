@@ -2,6 +2,12 @@
 
 static int depth;
 
+static int count(void) {
+  static int i = 1; 
+  // static var will only be initialized once
+  return i++;
+}
+
 static void push(void) {
   printf("  push %%rax\n");
   depth++;
@@ -107,6 +113,21 @@ static void gen_expr(Node *node) {
 
 static void gen_stmt(Node *node) {
   switch(node->kind) {
+    case ND_IF: {
+      int c = count();
+      gen_expr(node->cond); // store result in %rax
+      printf("  cmp $0, %%rax\n");
+      printf("  je .L.else.%d\n", c);
+      gen_stmt(node->then);
+      printf("  jmp .L.end.%d\n", c);
+
+      printf("  .L.else.%d:\n", c);
+      if (node->els) {
+	gen_stmt(node->els);
+      }
+      printf("  .L.end.%d:\n", c);
+      return;
+    }
     case ND_BLOCK:
       for (Node *n = node->body; n; n = n->next)
 	gen_stmt(n);
@@ -128,8 +149,7 @@ static void gen_stmt(Node *node) {
 
 // Assign offsets to local variables
 static void assign_lvar_offsets(Function *prog) {
-  int offset = 0;
-  // After parsing all local variables...
+  int offset = 0; // After parsing all local variables...
   for (Obj *var = prog->locals; var; var = var->next) {
     offset += 8;
     var->offset = -offset;

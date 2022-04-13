@@ -68,6 +68,7 @@ typedef enum {
   ND_DIV,       // /
   ND_ASSIGN,    // =
   ND_RETURN,    // "return"
+  ND_IF,        // "if"
   ND_BLOCK,     // { ... }
   ND_NEG,       // unary -
   ND_EQ,        // ==
@@ -84,11 +85,18 @@ typedef enum {
 struct Node {
   NodeKind kind; // Node kind
   Node *next;    // Node node (multiple exprssions)
+
   Node *lhs;     // Left-hand side (unary used)
   Node *rhs;     // Right-hand side
+
   Node *body;    // Used if kind == ND_BLOCK
   Obj *var;      // Used if kind == ND_VAR
   int val;       // Used if kind == ND_NUM
+
+  // If statement
+  Node *cond;
+  Node *then;
+  Node *els;
 };
 
 Function *parse(Token *tok);
