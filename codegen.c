@@ -107,6 +107,10 @@ static void gen_expr(Node *node) {
 
 static void gen_stmt(Node *node) {
   switch(node->kind) {
+    case ND_BLOCK:
+      for (Node *n = node->body; n; n = n->next)
+	gen_stmt(n);
+      return;
     case ND_RETURN:
       // unary
       gen_expr(node->lhs); // result in rax
@@ -134,6 +138,9 @@ static void assign_lvar_offsets(Function *prog) {
 
 }
 
+// Block (expr linked list)
+// -> Actual Code
+
 void codegen(Function *prog) {
   assign_lvar_offsets(prog);
 
@@ -159,16 +166,12 @@ void codegen(Function *prog) {
   printf("  movq  %%rax, -8(%%rbp)\n");
 
   // gen expression
-  for (Node *n = prog->body; n; n = n->next) {
-    // for each statement (stmt node)
-    gen_stmt(n);
-    assert(depth == 0);
-  }
+  gen_stmt(prog->body); // must a block expression
+  assert(depth == 0);
   
   printf(".L.return:\n");
   printf("  addq $%d, %%rsp\n", prog->stack_size + 16);
   printf("  popq %%rbp\n");
 
-  assert(depth == 0);
   printf("  ret\n");
 }

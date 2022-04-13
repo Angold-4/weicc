@@ -48,7 +48,7 @@ typedef struct Obj Obj;
 struct Obj {
   Obj *next;
   char *name;  // Variable name
-  int offset; // Offset from RBP (?)
+  int offset; // Offset from %rbp
 };
 
 // Function
@@ -68,6 +68,7 @@ typedef enum {
   ND_DIV,       // /
   ND_ASSIGN,    // =
   ND_RETURN,    // "return"
+  ND_BLOCK,     // { ... }
   ND_NEG,       // unary -
   ND_EQ,        // ==
   ND_NE,        // !=
@@ -85,6 +86,7 @@ struct Node {
   Node *next;    // Node node (multiple exprssions)
   Node *lhs;     // Left-hand side (unary used)
   Node *rhs;     // Right-hand side
+  Node *body;    // Used if kind == ND_BLOCK
   Obj *var;      // Used if kind == ND_VAR
   int val;       // Used if kind == ND_NUM
 };

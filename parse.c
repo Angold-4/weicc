@@ -3,8 +3,9 @@
 
 // All local variable instances created during parsing are
 // accumulated to this list.
-Obj *locals;
+Obj *locals; // local variable
 
+static Node *compound_stmt(Token **rest, Token *tok);
 static Node *stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
 static Node *expr(Token **rest, Token *tok);
@@ -67,6 +68,7 @@ static Obj *new_lvar(char *name) {
 
 // avoid left recursion
 // stmt = "return" expr ";"
+// 	| "{" compound_stmt
 //      | expr_stmt
 static Node *stmt(Token **rest, Token *tok) {
   if (equal(tok, "return")) {
@@ -74,7 +76,27 @@ static Node *stmt(Token **rest, Token *tok) {
     *rest = skip(tok, ";");
     return node;
   }
+
+  if (equal(tok, "{")) {
+    return compound_stmt(rest, tok->next);
+  }
+
   return expr_stmt(rest, tok);
+}
+
+// compound_stmt = stmt* "}"
+static Node *compound_stmt(Token **rest, Token *tok) {
+  Node head = {};
+  Node *cur = &head; // linked list
+
+  while (!equal(tok, "}"))
+    cur = cur->next = stmt(&tok, tok);
+
+  Node *node = new_node(ND_BLOCK);
+  node->body = head.next; // only block
+  *rest = tok->next; // jump "}"
+
+  return node;
 }
 
 // expr_stmt = expr ";"
@@ -99,7 +121,6 @@ static Node *assign(Token **rest, Token *tok) {
   *rest = tok;
   return node;
 }
-
 
 // equality = relational ("==" relational | "!=" relational)*
 static Node *equality(Token **rest, Token *tok) {
@@ -237,15 +258,11 @@ static Node *primary(Token **rest, Token *tok) {
 
 // program(Token list) = stmt*
 Function *parse(Token *tok) {
-  Node head = {};
-  Node *cur = &head;
-
-  while (tok->kind != TK_EOF) {
-    cur = cur->next = stmt(&tok, tok);
-  }
+  tok = skip(tok, "{"); // current program must inside "{" and "}"
 
   Function *prog = calloc(1, sizeof(Function));
-  prog->body = head.next;
+  prog->body = compound_stmt(&tok, tok); // stmt* "}"
+
   prog->locals = locals; // local variables
 
   return prog;
