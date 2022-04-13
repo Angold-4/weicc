@@ -59,4 +59,5 @@ assert 2 '{ 1; return 2; 3; }'
 assert 3 '{ 1; 2; return 3; }'
 
 assert 3 '{ {1; {2;} return 3;} }'
+assert 5 '{ ;;; return 5; }'
 echo OK
