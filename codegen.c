@@ -27,12 +27,11 @@ static int align_to(int n, int align) {
 // Compute the absolute address of a given node
 // It's an error if a given node does not reside in memory
 static void gen_addr(Node* node) {
-  // temporary total 26 variables (a-z)
   if (node->kind == ND_VAR) {
     printf("  lea %d(%%rbp), %%rax\n", node->var->offset); // address (in stack)
     return;
   }
-  error("not a lvalue"); // temp only variable is lvalue
+  error_tok(node->tok, "not a lvalue"); // temp only variable is lvalue
 }
 
 // DFS, each iteration the value stored in the %rax
@@ -110,7 +109,7 @@ static void gen_expr(Node *node) {
     error("invalid expression");
   }
 
-  error("invalid expression");
+  error_tok(node->tok, "invalid expression");
 }
 
 static void gen_stmt(Node *node) {
@@ -167,7 +166,7 @@ static void gen_stmt(Node *node) {
     default:
       break;
   }
-  error("invalid statement");
+  error_tok(node->tok, "invalid statement");
 }
 
 
