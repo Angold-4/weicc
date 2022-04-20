@@ -2,6 +2,8 @@
 
 static int depth;
 
+static void gen_expr(Node* node);
+
 static int count(void) {
   static int i = 1; 
   // static var will only be initialized once
@@ -27,10 +29,21 @@ static int align_to(int n, int align) {
 // Compute the absolute address of a given node
 // It's an error if a given node does not reside in memory
 static void gen_addr(Node* node) {
-  if (node->kind == ND_VAR) {
-    printf("  lea %d(%%rbp), %%rax\n", node->var->offset); // address (in stack)
-    return;
+  switch(node->kind) {
+    case ND_VAR:
+      // lea -- Load effective address
+      // The lea instruction places the address specified by
+      // its first operand into the register specified by its second operand.
+      printf("  lea %d(%%rbp), %%rax\n", node->var->offset); // address (in stack)
+      return;
+    case ND_DEREF:
+      // multiple dereference
+      gen_expr(node->lhs);
+      return;
+    default:
+      break;
   }
+
   error_tok(node->tok, "not a lvalue"); // temp only variable is lvalue
 }
 
@@ -48,8 +61,16 @@ static void gen_expr(Node *node) {
     printf("  neg %%rax\n");
     return;
   case ND_VAR:
-    gen_addr(node);
-    printf("  mov (%%rax), %%rax\n"); // move stack address into rax
+    gen_addr(node); // this gen will put the address of that var into %rax
+    // which we expected a pointer
+    printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
+    return;
+  case ND_DEREF:
+    gen_expr(node->lhs);
+    printf("  mov (%%rax), %%rax\n"); // get the value store in that stack
+    return;
+  case ND_ADDR:
+    gen_addr(node->lhs);
     return;
   case ND_ASSIGN:
     gen_addr(node->lhs);
@@ -58,9 +79,9 @@ static void gen_expr(Node *node) {
     gen_expr(node->rhs); // acutal value (r)
     // store them into rax
   
-    pop("%rdi"); // previous rhs address
+    pop("%rdi"); // previous lhs address (the tmp variable)
 
-    printf("  mov %%rax, (%%rdi)\n");
+    printf("  mov %%rax, (%%rdi)\n"); // only support integers
     return;
   default:
     break;
@@ -194,8 +215,7 @@ void codegen(Function *prog) {
 
 
   // Prologue
-  // 224 = 26 * 8 + (2 * 8), means total 26 single letter variables 
-  // (two more for stack canaries) in MacOSX
+  // (two more(16) for stack canaries) in MacOSX
 
   printf("  pushq %%rbp\n");
   printf("  mov %%rsp, %%rbp\n"); // current base
@@ -203,7 +223,7 @@ void codegen(Function *prog) {
 
   // The canaries (protect the stack)
   // please refer to this blog:
-  // https://a4org.github.io/OSDI/Chapter/Chapter1/SROPAttack.html
+  // https://angold4.org/OSDI/Chapter/Chapter1/SROPAttack.html
   printf("  movq ___stack_chk_guard@GOTPCREL(%%rip), %%rax\n");
   printf("  movq  (%%rax), %%rax\n");
   printf("  movq  %%rax, -8(%%rbp)\n");

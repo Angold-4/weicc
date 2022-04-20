@@ -47,7 +47,7 @@ Token *skip(Token *tok, char *op) {
   return tok->next;
 }
 
-// Create a new token.
+// Create a new token. (in heap)
 static Token *new_token(TokenKind kind, char *start, char *end) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
