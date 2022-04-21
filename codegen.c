@@ -70,7 +70,7 @@ static void gen_expr(Node *node) {
     printf("  mov (%%rax), %%rax\n"); // get the value store in that stack
     return;
   case ND_ADDR:
-    gen_addr(node->lhs);
+    gen_addr(node->lhs); // just return the addr (compare with var)
     return;
   case ND_ASSIGN:
     gen_addr(node->lhs);
