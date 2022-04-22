@@ -22,6 +22,7 @@
 // accumulated to this list.
 Obj *locals; // local variable
 
+static Node *declaration(Token **rest, Token *tok);
 static Node *compound_stmt(Token **rest, Token *tok);
 static Node *stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
@@ -76,12 +77,25 @@ static Node *new_var_node(Obj *var, Token *tok) {
   return node;
 }
 
-static Obj *new_lvar(char *name) {
+static Obj *new_lvar(char *name, Type* ty) {
   Obj *var = calloc(1, sizeof(Obj));
   var->name = name;
+  var->ty = ty;
+  // -> * -> * -> * -> ... -> *
   var->next = locals;
   locals = var; // update the local variable linked list 
   return var;
+}
+
+static char *get_ident(Token *tok) {
+  // a new variable
+  // initially, its name stored in the TEXT segment (prorgam)
+  // since the program will finally run on the machine
+  // we need to allocate some area in the heap
+  if (tok->kind != TK_IDENT)
+    error_tok(tok, "expected an identifier");
+  return strndup(tok->loc, tok->len);
+  // strndup allocate memory for string in heap
 }
 
 
@@ -146,18 +160,80 @@ static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
   error_tok(tok, "invalid operands");
 }
 
-// compound_stmt = stmt* "}"
+static Type *declspec(Token **rest, Token *tok) {
+  // "int"
+  *rest = skip(tok, "int");
+  return ty_int;
+}
+
+// declarator = "*"* (0 or n) ident
+static Type *declarator(Token **rest, Token *tok, Type *ty) {
+  while (consume(&tok, tok, "*")) {
+    ty = pointer_to(ty); // create a pointer
+  }
+
+  if (tok->kind != TK_IDENT) {
+    error_tok(tok, "expected a variable name");
+  }
+
+  ty->name = tok;
+  *rest = tok->next;
+  return ty;
+}
+
+// declaration = declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
+static Node *declaration(Token **rest, Token *tok) {
+  Type *basety = declspec(&tok, tok); // type (e.g, "int")
+
+  Node head = {};
+  Node *cur = &head;
+  int i = 0;
+
+  while (!equal(tok, ";")) {
+    if (i++ > 0) {
+      // the first declarator does not have ","
+      tok = skip(tok, ",");
+    }
+
+    Type *ty = declarator(&tok, tok, basety);
+    Obj *var = new_lvar(get_ident(ty->name), ty);
+
+    if (!equal(tok, "=")) {
+      // just a declaration
+      continue;
+    }
+
+    // we have an initial value for this variable
+    Node *lhs = new_var_node(var, ty->name);
+    Node *rhs = assign(&tok, tok->next); // value
+    Node *node = new_binary(ND_ASSIGN, lhs, rhs, tok);
+    cur = cur->next = new_unary(ND_EXPR_STMT, node, tok);
+    // sequential relationship
+  }
+
+  Node *node = new_node(ND_BLOCK, tok);
+  node->body = head.next;
+  *rest = tok->next;
+  return node;
+}
+
+// compound_stmt = (declaration | stmt)* "}"
 static Node *compound_stmt(Token **rest, Token *tok) {
+  Node *node = new_node(ND_BLOCK, tok);
+
   Node head = {};
   Node *cur = &head; // linked list
 
   while (!equal(tok, "}")) {
     // try to generate stmt nodes
-    cur = cur->next = stmt(&tok, tok);
+    if (equal(tok, "int")) {
+      cur = cur->next = declaration(&tok, tok);
+    } else {
+      cur = cur->next = stmt(&tok, tok);
+    }
     add_type(cur);
   }
 
-  Node *node = new_node(ND_BLOCK, tok);
   node->body = head.next; // only block
   *rest = tok->next; // jump "}"
 
@@ -390,9 +466,8 @@ static Node *primary(Token **rest, Token *tok) {
   if (tok->kind == TK_IDENT) {
     Obj *var = find_var(tok);
     if (!var) {
-      // a new variable
-      var = new_lvar(strndup(tok->loc, tok->len)); 
-      // strndup allocate memory for string in heap
+      error_tok(tok, "undefined variable");
+
     }
     *rest = tok->next;
     return new_var_node(var, tok);

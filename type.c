@@ -8,12 +8,15 @@ bool is_integer(Type *ty) {
 }
 
 Type *pointer_to(Type *base) {
+  // 1. allocate new heap memory for this type
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_PTR;
+  // 2. It pointes to the base address
   ty->base = base;
-  return ty;
+  return ty; // return its address as pointer
 }
 
+// type feature
 // add specific type to current node and
 // its all child nodes
 void add_type(Node *node) {
@@ -21,7 +24,7 @@ void add_type(Node *node) {
     return;
   }
 
-  // all possibilities
+  // all possibilities (we do not know current type)
   add_type(node->lhs);
   add_type(node->rhs);
   add_type(node->cond);
@@ -48,19 +51,20 @@ void add_type(Node *node) {
     case ND_NE:
     case ND_LT:
     case ND_LE:
-    case ND_VAR:
     case ND_NUM:
       node->ty = ty_int;
+      return;
+    case ND_VAR:
+      node->ty = node->var->ty;
       return;
     case ND_ADDR:
       node->ty = pointer_to(node->lhs->ty);
       return;
     case ND_DEREF:
-      if (node->lhs->ty->kind == TY_PTR) {
-	node->ty = node->lhs->ty->base;
-      } else {
-	node->ty = ty_int;
-      }
+      // key point
+      if (node->lhs->ty->kind != TY_PTR)
+	error_tok(node->tok, "invalid pointer dereference");
+      node->ty = node->lhs->ty->base;
       return;
     default:
       return;
