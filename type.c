@@ -1,6 +1,9 @@
 #include "weicc.h"
 
 
+// This type system only used in type
+// no relationship with the actual value
+
 Type *ty_int = &(Type){TY_INT};
 
 bool is_integer(Type *ty) {

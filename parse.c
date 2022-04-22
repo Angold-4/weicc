@@ -185,6 +185,10 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
 static Node *declaration(Token **rest, Token *tok) {
   Type *basety = declspec(&tok, tok); // type (e.g, "int")
 
+
+  // int x, y, z;  
+  // (x, y, z) -> declarator ("=" expr)?
+
   Node head = {};
   Node *cur = &head;
   int i = 0;

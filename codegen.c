@@ -39,6 +39,7 @@ static void gen_addr(Node* node) {
     case ND_DEREF:
       // multiple dereference
       gen_expr(node->lhs);
+      // stop until it reach a variable
       return;
     default:
       break;
@@ -61,23 +62,28 @@ static void gen_expr(Node *node) {
     printf("  neg %%rax\n");
     return;
   case ND_VAR:
+    // the behaviour is just like *&
     gen_addr(node); // this gen will put the address of that var into %rax
-    // which we expected a pointer
     printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
     return;
   case ND_DEREF:
-    gen_expr(node->lhs);
-    printf("  mov (%%rax), %%rax\n"); // get the value store in that stack
+    // two cases
+    // #1. On the left (lvar):
+    // (finally)will switch to ND_VAR and then lea the address into %rax
+    // #2. On the right (rvar):
+    // (finally)will switch to ND_ADDR and then lea the address into %rax
+    gen_expr(node->lhs); // will be the address (gen_addr)
+    printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
     return;
   case ND_ADDR:
-    gen_addr(node->lhs); // just return the addr (compare with var)
+    gen_addr(node->lhs); // just return the addr (compare it with var)
     return;
   case ND_ASSIGN:
     gen_addr(node->lhs);
     push();
 
     gen_expr(node->rhs); // acutal value (r)
-    // store them into rax
+    // and store it into rax
   
     pop("%rdi"); // previous lhs address (the tmp variable)
 
@@ -173,6 +179,7 @@ static void gen_stmt(Node *node) {
       return;
     }
     case ND_BLOCK:
+      // block -> declrations / stmts
       for (Node *n = node->body; n; n = n->next)
 	gen_stmt(n);
       return;
@@ -193,7 +200,7 @@ static void gen_stmt(Node *node) {
 
 // Assign offsets to local variables
 static void assign_lvar_offsets(Function *prog) {
-  int offset = 0; // After parsing all local variables...
+  int offset = 8; // After parsing all local variables...
   for (Obj *var = prog->locals; var; var = var->next) {
     offset += 8;
     var->offset = -offset;
