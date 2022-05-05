@@ -89,6 +89,9 @@ static void gen_expr(Node *node) {
 
     printf("  mov %%rax, (%%rdi)\n"); // only support integers
     return;
+  case ND_FUNCALL:
+    printf("  mov $0, %%rax\n");
+    printf("  call %s\n", node->funcname);
   default:
     break;
   }

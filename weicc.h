@@ -76,6 +76,7 @@ typedef enum {
   ND_IF,        // "if"
   ND_FOR,       // "for" or "while"
   ND_BLOCK,     // { ... }
+  ND_FUNCALL,   // Function call
   ND_NEG,       // unary -
   ND_EQ,        // ==
   ND_NE,        // !=
@@ -98,6 +99,7 @@ struct Node {
   Node *rhs;     // Right-hand side
 
   Node *body;    // Used if kind == ND_BLOCK
+  char *funcname;
   Obj *var;      // Used if kind == ND_VAR
   int val;       // Used if kind == ND_NUM
 
