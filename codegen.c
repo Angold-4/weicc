@@ -92,6 +92,7 @@ static void gen_expr(Node *node) {
   case ND_FUNCALL:
     printf("  mov $0, %%rax\n");
     printf("  call %s\n", node->funcname);
+    return;
   default:
     break;
   }
