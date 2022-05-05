@@ -218,33 +218,20 @@ static void assign_lvar_offsets(Function *prog) {
 void codegen(Function *prog) {
   assign_lvar_offsets(prog);
 
-  printf(".section	__TEXT,__text,regular,pure_instructions\n");
-  printf(".build_version macos, 12, 0	sdk_version 12, 0\n");
-  printf(".globl _main\n");
-  printf("_main:\n");
+  printf(".globl main\n");
+  printf("main:\n");
 
-
-  // Prologue
-  // (two more(16) for stack canaries) in MacOSX
-
-  printf("  pushq %%rbp\n");
+  printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n"); // current base
-  printf("  sub $%d, %%rsp\n", prog->stack_size + 16);
-
-  // The canaries (protect the stack)
-  // please refer to this blog:
-  // https://angold4.org/OSDI/Chapter/Chapter1/SROPAttack.html
-  printf("  movq ___stack_chk_guard@GOTPCREL(%%rip), %%rax\n");
-  printf("  movq  (%%rax), %%rax\n");
-  printf("  movq  %%rax, -8(%%rbp)\n");
+  printf("  sub $%d, %%rsp\n", prog->stack_size);
 
   // gen expression
   gen_stmt(prog->body); // must a block expression
   assert(depth == 0);
   
   printf(".L.return:\n");
-  printf("  addq $%d, %%rsp\n", prog->stack_size + 16);
-  printf("  popq %%rbp\n");
+  printf("  add $%d, %%rsp\n", prog->stack_size);
+  printf("  pop %%rbp\n");
 
   printf("  ret\n");
 }
