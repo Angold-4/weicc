@@ -210,7 +210,6 @@ static void assign_lvar_offsets(Function *prog) {
     var->offset = -offset;
   }
   prog->stack_size = align_to(offset, 16);
-
 }
 
 // Block (expr linked list)
