@@ -22,6 +22,8 @@
 // accumulated to this list.
 Obj *locals; // local variable
 
+static Type *declspec(Token **rest, Token *tok);
+static Type *declarator(Token **rest, Token *tok, Type *ty);
 static Node *declaration(Token **rest, Token *tok);
 static Node *compound_stmt(Token **rest, Token *tok);
 static Node *stmt(Token **rest, Token *tok);
@@ -167,7 +169,17 @@ static Type *declspec(Token **rest, Token *tok) {
   return ty_int;
 }
 
-// declarator = "*"* (0 or n) ident
+static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
+  if (equal(tok, "(")) {
+    // current only support zero parameter
+    *rest = skip(tok->next, ")");
+    return func_type(ty);
+  }
+  *rest = tok;
+  return ty;
+}
+
+// declarator = "*"* (0 or n) ident type-suffix
 static Type *declarator(Token **rest, Token *tok, Type *ty) {
   while (consume(&tok, tok, "*")) {
     ty = pointer_to(ty); // create a pointer
@@ -177,8 +189,9 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
     error_tok(tok, "expected a variable name");
   }
 
+  ty = type_suffix(rest, tok->next, ty); // check the type of this identifier
+
   ty->name = tok;
-  *rest = tok->next;
   return ty;
 }
 
@@ -517,17 +530,38 @@ static Node *funcall(Token **rest, Token *tok) {
   return node;
 }
 
+static Function *function(Token **rest, Token *tok) {
+  Type *ty = declspec(&tok, tok);
+  ty = declarator(&tok, tok, ty);
+
+  locals = NULL; // key:
+  // each function will set the locals equal to NULL
+  // then update its variable in that locals
+  // finally store it in the fn->locals
+
+  Function *fn = calloc(1, sizeof(Function));
+  fn->name = get_ident(ty->name);
+
+  tok = skip(tok, "{"); // current program must inside "{" and "}"
+
+  fn->body = compound_stmt(rest, tok); // also parse locals
+
+  fn->locals = locals;
+  return fn;
+}
+
+
 // Token Linked List
 // -> expr
 
-// program(Token list) = stmt*
+// program(Token list) = function-definition*
 Function *parse(Token *tok) {
-  tok = skip(tok, "{"); // current program must inside "{" and "}"
+  Function head = {};
+  Function *cur = &head;
 
-  Function *prog = calloc(1, sizeof(Function));
-  prog->body = compound_stmt(&tok, tok); // stmt* "}"
+  while (tok->kind != TK_EOF) {
+    cur = cur->next = function(&tok, tok);
+  }
 
-  prog->locals = locals; // local variables
-
-  return prog;
+  return head.next;
 }
