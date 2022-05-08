@@ -169,12 +169,33 @@ static Type *declspec(Token **rest, Token *tok) {
   return ty_int;
 }
 
+// type_suffix = ("(" func-params? ")")?
+// func-params = param ("," param)*
+// param       = declspec declarator
 static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
   if (equal(tok, "(")) {
-    // current only support zero parameter
-    *rest = skip(tok->next, ")");
-    return func_type(ty);
+    tok = tok->next;
+
+    Type head = {};
+    Type *cur = &head;
+
+    while (!equal(tok, ")")) {
+      if (cur != &head) {
+	tok = skip(tok, ",");
+      }
+
+      Type *basety = declspec(&tok, tok);
+      Type *ty = declarator(&tok, tok, basety); // (
+      cur = cur->next = copy_type(ty);
+    }
+
+    ty = func_type(ty);
+    ty->params = head.next; // linked list
+    *rest = tok->next;
+    return ty;
   }
+
+  // just an identifier
   *rest = tok;
   return ty;
 }
@@ -505,6 +526,14 @@ static Node *primary(Token **rest, Token *tok) {
   return new_node(ND_ERR, tok); // never reach here
 }
 
+static void create_param_lvars(Type *param) {
+  if (param) {
+    create_param_lvars(param->next);
+    // create a new variable and put them into locals
+    new_lvar(get_ident(param->name), param);
+  }
+}
+
 // funcall = identifier "(" (assign ("," assign)*)? ")"
 static Node *funcall(Token **rest, Token *tok) {
   Token *start = tok;    // current at identifier (record)
@@ -542,11 +571,14 @@ static Function *function(Token **rest, Token *tok) {
   Function *fn = calloc(1, sizeof(Function));
   fn->name = get_ident(ty->name);
 
+  create_param_lvars(ty->params); // will update locals
+  fn->params = locals;
+
   tok = skip(tok, "{"); // current program must inside "{" and "}"
 
   fn->body = compound_stmt(rest, tok); // also parse locals
 
-  fn->locals = locals;
+  fn->locals = locals; // notice that it will treat params as locals
   return fn;
 }
 
