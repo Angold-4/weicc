@@ -1,6 +1,6 @@
 # weicc: A Small C Compiler
 
-**For the weicc implementation docs, please refer to [https://a4org.github.io/cs/](https://a4org.github.io/cs/)**
+**For the weicc implementation docs, please refer to [https://angold4.org/cs/](https://angold4.org/cs/)**
 
 ## Introduction (quoted from cs)
 
@@ -15,7 +15,7 @@ After watching the **[chibicc](https://github.com/rui314/chibicc)** by **[Rui](h
 1. **C language has clear and reasonable specification**
 2. **C compiler translate C program into machine language (assembly), so by creating a compiler, I may learn how program works in real CPU at the same time C itself.**
 3. **C is so widely used that once the compiler works, you can compile and play with third-party source code:**
-    * Xv6 - a mini unix operating system that I introduced in [os](https://a4org.github.io/os/index.html).
+    * Xv6 - a mini unix operating system that I introduced in [os](https://angold4.org/os/index.html).
     * Linux (if the compiler is perfect enough)
 4. **C++ has such a huge language specification that it is impossible to easily create a self-made compiler.**
 5. **There are already lots of self-implemented C compilers for reference, such as:**
@@ -38,4 +38,4 @@ In this implementation, I decided to take a different approach. We start from a 
 
 weicc is influenced (at least trying to) by **[Rob Pike](https://en.wikipedia.org/wiki/Rob_Pike)**'s way of **[thinking about programming](https://users.ece.utexas.edu/~adnan/pike.html)**. Rob Pike is a former colleague of C author **[Dennis Ritchie](https://en.wikipedia.org/wiki/Dennis_Ritchie)**, he created go language and UTF-8 with **[Ken Thompson](https://en.wikipedia.org/wiki/Ken_Thompson)**.
 
-I quote these five rules in the index page of **[cs](https://a4org.github.io/cs/index.html)**, I really like the Rule 5, which can be shortened to **"write stubid code that uses smart objects."**
+I quote these five rules in the index page of **[cs](https://angold4.org.github.io/cs/index.html)**, I really like the Rule 5, which can be shortened to **"write stubid code that uses smart objects."**

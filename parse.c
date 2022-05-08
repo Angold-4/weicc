@@ -34,6 +34,7 @@ static Node *add(Token **rest, Token *tok);
 static Node *mul(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
+static Node *funcall(Token **rest, Token *tok);
 
 
 // Find a local variable by name
@@ -458,8 +459,8 @@ static Node *unary(Token **rest, Token *tok) {
   return primary(rest, tok);
 }
 
-// primary = "(" expr ")" | identifier args? | num
-// args = "(" ")"  (temporary like this)
+// primary = "(" expr ")" | identifier  func-args? | num
+// func-args = "(" (assign ("," assign)*)? ")"
 static Node *primary(Token **rest, Token *tok) {
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
@@ -469,12 +470,8 @@ static Node *primary(Token **rest, Token *tok) {
 
   if (tok->kind == TK_IDENT) {
     // Function call
-    if (equal(tok->next, "(")) {
-      Node *node = new_node(ND_FUNCALL, tok);
-      node->funcname = strndup(tok->loc, tok->len); // addr
-      *rest = skip(tok->next->next, ")");
-      return node;
-    }
+    if (equal(tok->next, "("))
+      return funcall(rest, tok);
 
     // Variable
     Obj *var = find_var(tok);
@@ -493,6 +490,31 @@ static Node *primary(Token **rest, Token *tok) {
 
   error_tok(tok, "expected an expression");
   return new_node(ND_ERR, tok); // never reach here
+}
+
+// funcall = identifier "(" (assign ("," assign)*)? ")"
+static Node *funcall(Token **rest, Token *tok) {
+  Token *start = tok;    // current at identifier (record)
+  tok = tok->next->next; // jump '('
+
+  Node head = {};
+  Node *cur = &head;
+
+  while (!equal(tok, ")")) {
+    if (cur != &head) {
+      // except the first time (no ',')
+      tok = skip(tok, ",");
+    }
+    cur = cur->next = assign(&tok, tok);
+  }
+
+  *rest = skip(tok, ")");
+
+  // build the node
+  Node *node = new_node(ND_FUNCALL, start);
+  node->funcname = strndup(start->loc, start->len);
+  node->args = head.next; // linked list
+  return node;
 }
 
 // Token Linked List
