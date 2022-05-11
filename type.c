@@ -4,13 +4,14 @@
 // This type system only used in type
 // no relationship with the actual value
 
-Type *ty_int = &(Type){TY_INT};
+Type *ty_int = &(Type){TY_INT, 8};
 
 bool is_integer(Type *ty) {
   return ty->kind == TY_INT;
 }
 
 Type *copy_type(Type *ty) {
+  // copy a type object
   Type *ret = calloc(1, sizeof(Type));
   *ret = *ty;
   return ret;
@@ -22,7 +23,19 @@ Type *pointer_to(Type *base) {
   ty->kind = TY_PTR;
   // 2. It pointes to the base address
   ty->base = base;
+  ty->size = 8;
   return ty; // return its address as pointer
+}
+
+Type *array_of(Type *base, int len) {
+  Type *ty = calloc(1, sizeof(Type));
+
+  ty->kind = TY_ARRAY;
+  ty->size = base->size * len;
+  ty->base = base;
+  ty->array_len = len;
+
+  return ty;
 }
 
 Type *func_type(Type *return_ty) {
@@ -63,7 +76,11 @@ void add_type(Node *node) {
     case ND_MUL:
     case ND_DIV:
     case ND_NEG:
+      node->ty = node->lhs->ty;
+      return;
     case ND_ASSIGN:
+      if (node->lhs->ty->kind == TY_ARRAY)
+	error_tok(node->lhs->tok, "not an lvalue");
       // binary expressions
       node->ty = node->lhs->ty;
       return;
@@ -79,11 +96,14 @@ void add_type(Node *node) {
       node->ty = node->var->ty;
       return;
     case ND_ADDR:
-      node->ty = pointer_to(node->lhs->ty);
+      if (node->lhs->ty->kind == TY_ARRAY)
+	node->ty = pointer_to(node->lhs->ty->base);
+      else
+	node->ty = pointer_to(node->lhs->ty);
       return;
     case ND_DEREF:
       // key point
-      if (node->lhs->ty->kind != TY_PTR)
+      if (!node->lhs->ty->base)
 	error_tok(node->tok, "invalid pointer dereference");
       node->ty = node->lhs->ty->base;
       return;

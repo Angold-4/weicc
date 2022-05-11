@@ -101,6 +101,12 @@ static char *get_ident(Token *tok) {
   // strndup allocate memory for string in heap
 }
 
+static int get_number(Token *tok) {
+  if (tok->kind != TK_NUM)
+    error_tok(tok, "expected a number");
+  return tok->val;
+}
+
 
 // In C, `+` operator is overloaded to perform the pointer arithmetic.
 // If p is a pointer, p+n adds not n but sizeof(*p)*n to the value of p,
@@ -130,7 +136,7 @@ static Node *new_add(Node* lhs, Node *rhs, Token *tok) {
 
   // ptr + num
   // Now only support int (only int type supported currently)
-  rhs = new_binary(ND_MUL, rhs, new_num(8, tok), tok); 
+  rhs = new_binary(ND_MUL, rhs, new_num(lhs->ty->base->size, tok), tok); 
   return new_binary(ND_ADD, lhs, rhs, tok);
 }
 
@@ -146,7 +152,7 @@ static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
 
   // ptr - num
   if (lhs->ty->base && is_integer(rhs->ty)) {
-    rhs = new_binary(ND_MUL, rhs, new_num(8, tok), tok);
+    rhs = new_binary(ND_MUL, rhs, new_num(lhs->ty->base->size, tok), tok);
     add_type(rhs);
     Node *node = new_binary(ND_SUB, lhs, rhs, tok);
     node->ty = lhs->ty;
@@ -157,7 +163,7 @@ static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
   if (lhs->ty->base && rhs->ty->base) {
     Node *node = new_binary(ND_SUB, lhs, rhs, tok);
     node->ty = ty_int;
-    return new_binary(ND_DIV, node, new_num(8, tok), tok);
+    return new_binary(ND_DIV, node, new_num(lhs->ty->base->size, tok), tok);
   }
 
   error_tok(tok, "invalid operands");
@@ -169,33 +175,52 @@ static Type *declspec(Token **rest, Token *tok) {
   return ty_int;
 }
 
-// type_suffix = ("(" func-params? ")")?
+// func-params = (param ("," param)*)? " )"
+// param = declspec declarator
+static Type *func_params(Token **rest, Token *tok, Type *ty) {
+  Type head = {}; // parameters
+  Type *cur = &head;
+
+  while (!equal(tok, ")")) {
+    if (cur != &head) {
+      tok = skip(tok, ",");
+    }
+
+    // declaration
+    Type *basety = declspec(&tok, tok);       // int
+    Type *ty = declarator(&tok, tok, basety); // idenitfier
+    // allocate a new copied type object in heap
+    cur = cur->next = copy_type(ty);        
+  }
+
+  ty = func_type(ty); // it is an function
+  ty->params = head.next;
+  *rest = tok->next; // update the pointer
+
+  return ty;
+}
+
+
+// type_suffix = "(" func-params
+// 	       | "[" num "]"
+// 	       | ε
 // func-params = param ("," param)*
 // param       = declspec declarator
 static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
+  // function
   if (equal(tok, "(")) {
-    tok = tok->next;
-
-    Type head = {};
-    Type *cur = &head;
-
-    while (!equal(tok, ")")) {
-      if (cur != &head) {
-	tok = skip(tok, ",");
-      }
-
-      Type *basety = declspec(&tok, tok);
-      Type *ty = declarator(&tok, tok, basety); // (
-      cur = cur->next = copy_type(ty);
-    }
-
-    ty = func_type(ty);
-    ty->params = head.next; // linked list
-    *rest = tok->next;
-    return ty;
+    return func_params(rest, tok->next, ty);
   }
 
-  // just an identifier
+  // array
+  if (equal(tok, "[")) {
+    int sz = get_number(tok->next);
+    *rest = skip(tok->next->next, "]");
+    return array_of(ty, sz); 
+    // not actually assign a space for this array object
+    // the actual array value at runtime is stored in the stack
+  }
+
   *rest = tok;
   return ty;
 }
@@ -210,7 +235,9 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
     error_tok(tok, "expected a variable name");
   }
 
-  ty = type_suffix(rest, tok->next, ty); // check the type of this identifier
+  ty = type_suffix(rest, tok->next, ty); 
+  // get the type of this identifier
+  // a function, array, or just a variable
 
   ty->name = tok;
   return ty;
@@ -219,7 +246,6 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
 // declaration = declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
 static Node *declaration(Token **rest, Token *tok) {
   Type *basety = declspec(&tok, tok); // type (e.g, "int")
-
 
   // int x, y, z;  
   // (x, y, z) -> declarator ("=" expr)?

@@ -53,6 +53,28 @@ static void gen_addr(Node* node) {
   error_tok(node->tok, "not a lvalue"); // temp only variable is lvalue
 }
 
+// Load a value from where %rax is pointing to.
+static void load(Type *ty) {
+  if (ty->kind == TY_ARRAY) {
+    // if it is an array, do not attempt to load a value to the
+    // register because in general we can't load an entire array to a
+    // register. As a result, the result of an evaluation of an array
+    // becomes not the array itself but the address of the array.
+    //
+    // And this is where "array is automatically converted to a pointer 
+    // to the first element of the array i C" occurs
+    return;
+  }
+
+  printf("  mov (%%rax), %%rax\n");
+}
+
+// Store %rax to an address that the stack top is pointing to.
+static void store(void) {
+  pop("%rdi");
+  printf("  mov %%rax, (%%rdi)\n");
+}
+
 // DFS, each iteration the value stored in the %rax
 // every time this function wants to update %rax
 // it need to store prev rax by pushing it into stack
@@ -69,7 +91,8 @@ static void gen_expr(Node *node) {
   case ND_VAR:
     // the behaviour is just like *&
     gen_addr(node); // this gen will put the address of that var into %rax
-    printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
+    // printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
+    load(node->ty);
     return;
   case ND_DEREF:
     // two cases
@@ -78,7 +101,8 @@ static void gen_expr(Node *node) {
     // #2. On the right (rvar):
     // (finally)will switch to ND_ADDR and then lea the address into %rax
     gen_expr(node->lhs); // will be the address (gen_addr)
-    printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
+    // printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
+    load(node->ty);
     return;
   case ND_ADDR:
     gen_addr(node->lhs); // just return the addr (compare it with var)
@@ -90,9 +114,10 @@ static void gen_expr(Node *node) {
     gen_expr(node->rhs); // acutal value (r)
     // and store it into rax
   
-    pop("%rdi"); // previous lhs address (the tmp variable)
+    // pop("%rdi"); // previous lhs address (the tmp variable)
+    // printf("  mov %%rax, (%%rdi)\n"); // only support integers
 
-    printf("  mov %%rax, (%%rdi)\n"); // only support integers
+    store();
     return;
   case ND_FUNCALL: {
     int nargs = 0;
@@ -226,7 +251,7 @@ static void assign_lvar_offsets(Function *prog) {
   for (Function *fn = prog; fn; fn = fn->next) {
     int offset = 0; // After parsing all local variables...
     for (Obj *var = fn->locals; var; var = var->next) {
-      offset += 8;
+      offset += var->ty->size;
       var->offset = -offset;
     }
     fn->stack_size = align_to(offset, 16);
