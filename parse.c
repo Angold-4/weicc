@@ -537,13 +537,19 @@ static Node *postfix(Token **rest, Token *tok) {
   return node;
 }
 
-// primary = "(" expr ")" | identifier  func-args? | num
+// primary = "(" expr ")" | "sizeof" unary | identifier  func-args? | num
 // func-args = "(" (assign ("," assign)*)? ")"
 static Node *primary(Token **rest, Token *tok) {
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
     *rest = skip(tok, ")");
     return node;
+  }
+
+  if (equal(tok, "sizeof")) {
+    Node *node = unary(rest, tok->next);
+    add_type(node); // add type !
+    return new_num(node->ty->size, tok);
   }
 
   if (tok->kind == TK_IDENT) {

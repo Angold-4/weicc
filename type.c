@@ -48,6 +48,7 @@ Type *func_type(Type *return_ty) {
 // type feature
 // add specific type to current node and
 // its all child nodes
+// for something like calculate size...
 void add_type(Node *node) {
   if (!node || node->ty) {
     return;
