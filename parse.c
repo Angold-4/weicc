@@ -202,7 +202,7 @@ static Type *func_params(Token **rest, Token *tok, Type *ty) {
 
 
 // type_suffix = "(" func-params
-// 	       | "[" num "]"
+// 	       | "[" num "]" type-suffix
 // 	       | ε
 // func-params = param ("," param)*
 // param       = declspec declarator
@@ -215,7 +215,8 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
   // array
   if (equal(tok, "[")) {
     int sz = get_number(tok->next);
-    *rest = skip(tok->next->next, "]");
+    tok = skip(tok->next->next, "]");
+    ty = type_suffix(rest, tok, ty); // array of array
     return array_of(ty, sz); 
     // not actually assign a space for this array object
     // the actual array value at runtime is stored in the stack
