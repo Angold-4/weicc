@@ -43,10 +43,18 @@ static Node *funcall(Token **rest, Token *tok);
 
 // Find a local variable by name
 static Obj *find_var(Token *tok) {
+  // local variables first
   for (Obj *var = locals; var; var = var->next) {
     if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
       return var; // Obj
   }
+
+  // then global variables
+  for (Obj *var = globals; var; var = var->next) {
+    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
+      return var; // Obj
+  }
+
   return NULL;
 }
 
@@ -188,8 +196,13 @@ static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
   error_tok(tok, "invalid operands");
 }
 
+// declspec = "int" | "char"
 static Type *declspec(Token **rest, Token *tok) {
-  // "int"
+  if (equal(tok, "char")) {
+    *rest = tok->next;
+    return ty_char;
+  }
+
   *rest = skip(tok, "int");
   return ty_int;
 }
@@ -302,6 +315,12 @@ static Node *declaration(Token **rest, Token *tok) {
   return node;
 }
 
+// Returns true if a given token represents a type.
+static bool is_typename(Token *tok) {
+  return equal(tok, "char") || equal(tok, "int");
+}
+
+
 // compound_stmt = (declaration | stmt)* "}"
 static Node *compound_stmt(Token **rest, Token *tok) {
   Node *node = new_node(ND_BLOCK, tok);
@@ -311,12 +330,12 @@ static Node *compound_stmt(Token **rest, Token *tok) {
 
   while (!equal(tok, "}")) {
     // try to generate stmt nodes
-    if (equal(tok, "int")) {
+    if (is_typename(tok)) {
       cur = cur->next = declaration(&tok, tok);
     } else {
       cur = cur->next = stmt(&tok, tok);
     }
-    add_type(cur);
+    add_type(cur); // each stmt / declaration
   }
 
   node->body = head.next; // only block
@@ -566,7 +585,7 @@ static Node *primary(Token **rest, Token *tok) {
 
   if (equal(tok, "sizeof")) {
     Node *node = unary(rest, tok->next);
-    add_type(node); // add type !
+    add_type(node); // add type ! we want its size
     return new_num(node->ty->size, tok);
   }
 
@@ -646,7 +665,35 @@ static Token *function(Token *tok, Type *basety) {
   tok = skip(tok, "{"); // current program must inside "{" and "}"
   fn->body = compound_stmt(&tok, tok); // also parse locals
   fn->locals = locals; // notice that it will treat params as locals
-  return tok; // updated token
+
+  return tok; // updated token list
+}
+
+static Token *global_variable(Token *tok, Type *basety) {
+
+  bool first = true;
+
+  while (!consume(&tok, tok, ";")) {
+    if (!first) 
+      tok = skip(tok, ",");
+    first = false;
+
+    Type *ty = declarator(&tok, tok, basety);
+    new_gvar(get_ident(ty->name), ty); // append to the globals
+  }
+
+  return tok;
+}
+
+// Lookahead tokens and returns true if the given token is a start
+// of a function definition or declaration
+static bool is_function(Token *tok) {
+  if (equal(tok, ";"))
+    return false;
+
+  Type dummy = {};
+  Type *ty = declarator(&tok, tok, &dummy);
+  return ty->kind == TY_FUNC;
 }
 
 
@@ -659,7 +706,15 @@ Obj *parse(Token *tok) {
 
   while (tok->kind != TK_EOF) {
     Type *basety = declspec(&tok, tok);
-    tok = function(tok, basety);
+
+    // Function
+    if (is_function(tok)) {
+      tok = function(tok, basety);
+      continue;
+    }
+
+    // Global variable
+    tok = global_variable(tok, basety);
   }
   
   return globals;

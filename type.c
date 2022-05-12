@@ -5,9 +5,10 @@
 // no relationship with the actual value
 
 Type *ty_int = &(Type){TY_INT, 8};
+Type *ty_char = &(Type){TY_CHAR, 1};
 
 bool is_integer(Type *ty) {
-  return ty->kind == TY_INT;
+  return ty->kind == TY_INT || ty->kind == TY_CHAR;
 }
 
 Type *copy_type(Type *ty) {
@@ -46,6 +47,7 @@ Type *func_type(Type *return_ty) {
 }
 
 // type feature
+// DFS
 // add specific type to current node and
 // its all child nodes
 // for something like calculate size...
