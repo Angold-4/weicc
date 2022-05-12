@@ -20,7 +20,8 @@
 
 // All local variable instances created during parsing are
 // accumulated to this list.
-Obj *locals; // local variable
+static Obj *locals;
+static Obj *globals;
 
 static Type *declspec(Token **rest, Token *tok);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
@@ -81,13 +82,29 @@ static Node *new_var_node(Obj *var, Token *tok) {
   return node;
 }
 
-static Obj *new_lvar(char *name, Type* ty) {
+static Obj *new_var(char *name, Type* ty) {
+  // helper function
   Obj *var = calloc(1, sizeof(Obj));
   var->name = name;
   var->ty = ty;
+  return var;
+}
+
+static Obj *new_lvar(char *name, Type *ty) {
+  // new local variable
+  Obj *var = new_var(name, ty);
+  var->is_local = true;
   // -> * -> * -> * -> ... -> *
   var->next = locals;
   locals = var; // update the local variable linked list 
+  return var;
+}
+
+static Obj *new_gvar(char *name, Type *ty) {
+  Obj *var = new_var(name, ty);
+  // -> * -> * -> * -> ... -> *
+  var->next = globals;
+  globals = var; // update the global variable linked list
   return var;
 }
 
@@ -98,7 +115,8 @@ static char *get_ident(Token *tok) {
   // we need to allocate some area in the heap
   if (tok->kind != TK_IDENT)
     error_tok(tok, "expected an identifier");
-  return strndup(tok->loc, tok->len);
+  return strndup(tok->loc, tok->len); // return char* 
+  // the pointer in the heap
   // strndup allocate memory for string in heap
 }
 
@@ -586,6 +604,7 @@ static void create_param_lvars(Type *param) {
 
 // funcall = identifier "(" (assign ("," assign)*)? ")"
 static Node *funcall(Token **rest, Token *tok) {
+  // make that function call
   Token *start = tok;    // current at identifier (record)
   tok = tok->next->next; // jump '('
 
@@ -609,41 +628,39 @@ static Node *funcall(Token **rest, Token *tok) {
   return node;
 }
 
-static Function *function(Token **rest, Token *tok) {
-  Type *ty = declspec(&tok, tok);
-  ty = declarator(&tok, tok, ty);
+static Token *function(Token *tok, Type *basety) {
+  Type *ty = declarator(&tok, tok, basety);  
+
+  Obj *fn = new_gvar(get_ident(ty->name), ty); // key:
+  // already append that functioin into globals list
+  fn->is_function = true;
 
   locals = NULL; // key:
   // each function will set the locals equal to NULL
   // then update its variable in that locals
   // finally store it in the fn->locals
 
-  Function *fn = calloc(1, sizeof(Function));
-  fn->name = get_ident(ty->name);
-
   create_param_lvars(ty->params); // will update locals
   fn->params = locals;
 
   tok = skip(tok, "{"); // current program must inside "{" and "}"
-
-  fn->body = compound_stmt(rest, tok); // also parse locals
-
+  fn->body = compound_stmt(&tok, tok); // also parse locals
   fn->locals = locals; // notice that it will treat params as locals
-  return fn;
+  return tok; // updated token
 }
 
 
 // Token Linked List
 // -> expr
 
-// program(Token list) = function-definition*
-Function *parse(Token *tok) {
-  Function head = {};
-  Function *cur = &head;
+// program(Token list) = (function-definition | global-variable)*
+Obj *parse(Token *tok) {
+  globals = NULL;
 
   while (tok->kind != TK_EOF) {
-    cur = cur->next = function(&tok, tok);
+    Type *basety = declspec(&tok, tok);
+    tok = function(tok, basety);
   }
-
-  return head.next;
+  
+  return globals;
 }
