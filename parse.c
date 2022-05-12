@@ -93,7 +93,7 @@ static Node *new_var_node(Obj *var, Token *tok) {
 static Obj *new_var(char *name, Type* ty) {
   // helper function
   Obj *var = calloc(1, sizeof(Obj));
-  var->name = name;
+  var->name = name; // name = .L..%id (in string)
   var->ty = ty;
   return var;
 }
@@ -116,6 +116,25 @@ static Obj *new_gvar(char *name, Type *ty) {
   return var;
 }
 
+static char *new_unique_name(void) {
+  static int id = 0; // static
+  char *buf = calloc(1, 20);
+  sprintf(buf, ".L..%d", id++);
+  // sprintf() write to the character string str.
+
+  return buf;
+}
+
+static Obj *new_anon_gvar(Type *ty) {
+  return new_gvar(new_unique_name(), ty);
+}
+
+static Obj *new_string_literal(char *p, Type *ty) {
+  Obj *var = new_anon_gvar(ty);
+  var->init_data = p;
+  return var;
+}
+
 static char *get_ident(Token *tok) {
   // a new variable
   // initially, its name stored in the TEXT segment (prorgam)
@@ -124,7 +143,7 @@ static char *get_ident(Token *tok) {
   if (tok->kind != TK_IDENT)
     error_tok(tok, "expected an identifier");
   return strndup(tok->loc, tok->len); // return char* 
-  // the pointer in the heap
+  // return the pointer in the heap (that store the string name)
   // strndup allocate memory for string in heap
 }
 
@@ -574,7 +593,7 @@ static Node *postfix(Token **rest, Token *tok) {
   return node;
 }
 
-// primary = "(" expr ")" | "sizeof" unary | identifier  func-args? | num
+// primary = "(" expr ")" | "sizeof" unary | identifier  func-args? | str | num
 // func-args = "(" (assign ("," assign)*)? ")"
 static Node *primary(Token **rest, Token *tok) {
   if (equal(tok, "(")) {
@@ -599,6 +618,12 @@ static Node *primary(Token **rest, Token *tok) {
     if (!var) {
       error_tok(tok, "undefined variable");
     }
+    *rest = tok->next;
+    return new_var_node(var, tok);
+  }
+
+  if (tok->kind == TK_STR) {
+    Obj *var = new_string_literal(tok->str, tok->ty);
     *rest = tok->next;
     return new_var_node(var, tok);
   }

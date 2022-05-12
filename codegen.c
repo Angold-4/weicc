@@ -238,8 +238,10 @@ static void gen_stmt(Node *node) {
 
       printf("  jmp .L.begin.%d\n", c);
       printf(".L.end.%d:\n", c);
+
       return;
     }
+
     case ND_BLOCK:
       // block -> declrations / stmts
       for (Node *n = node->body; n; n = n->next)
@@ -284,7 +286,14 @@ static void emit_data(Obj *prog) {
     printf("  .data\n");
     printf("  .globl %s\n", var->name);
     printf("%s:\n", var->name);
-    printf("  .zero %d\n", var->ty->size); // zero flag indicate the size of that variable
+
+    if (var->init_data) {
+      for (int i = 0; i < var->ty->size; i++) {
+	printf("  .byte %d\n", var->init_data[i]); // ascii
+      }
+    } else {
+      printf("  .zero %d\n", var->ty->size);
+    }
   }
 }
 

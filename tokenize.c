@@ -100,8 +100,22 @@ static bool is_keyword(Token* tok) {
     if (equal(tok, kw[i]))
       return true;
   }
-  return false;
 
+  return false;
+}
+
+static Token *read_string_literal(char *start) {
+  char *p = start + 1;
+  for (; *p != '"'; p++) {
+    if (*p == '\n' || *p == '\0') {
+      error_at(start, "unclosed string literal");
+    }
+  }
+
+  Token *tok = new_token(TK_STR, start, p + 1);
+  tok->ty = array_of(ty_char, p - start); // p - start == 1
+  tok->str = strndup(start + 1, p - start - 1); // pointer in the heap
+  return tok;
 }
 
 static void convert_keywords(Token* tok) {
@@ -138,6 +152,13 @@ Token *tokenize(char *p) {
       // which will update the &p
       cur->val = strtoul(p, &p, 10); // str -> u long
       cur->len = p - q;
+      continue;
+    }
+
+    // String literal
+    if (*p == '"') {
+      cur = cur->next = read_string_literal(p);
+      p += cur->len;
       continue;
     }
 
