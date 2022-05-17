@@ -11,6 +11,13 @@ typedef struct Node Node;
 typedef struct Type Type;
 
 //
+// strings.c
+//
+
+char *format(char *fmt, ...);
+
+
+//
 // tokenize.c
 //
 

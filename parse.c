@@ -118,11 +118,12 @@ static Obj *new_gvar(char *name, Type *ty) {
 
 static char *new_unique_name(void) {
   static int id = 0; // static
-  char *buf = calloc(1, 20);
-  sprintf(buf, ".L..%d", id++);
+
+  // char *buf = calloc(1, 20);
+  // sprintf(buf, ".L..%d", id++);
   // sprintf() write to the character string str.
 
-  return buf;
+  return format(".L..%d", id++);
 }
 
 static Obj *new_anon_gvar(Type *ty) {
