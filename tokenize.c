@@ -79,6 +79,15 @@ static bool is_ident2(char c) {
   return is_ident1(c) || ('0' <= c && c <= '9');
 }
 
+static int from_hex(char c) {
+  if ('0' <= c && c <= '9')
+    return c - '0';
+  if ('a' <= c && c <= 'f')
+    return c - 'a' + 10;
+  return c - 'A' + 10;
+}
+
+
 // Read a punctuator token from p and returns its length.
 static int read_punct(char *p) {
   if (startswith(p, "==") || startswith(p, "!=") ||
@@ -104,7 +113,7 @@ static bool is_keyword(Token* tok) {
   return false;
 }
 
-static int read_escaped_char(char *p) {
+static int read_escaped_char(char **new_pos, char *p) {
   // Escape sequences are defined using themseleves here E.g.
   // '\n' is implemented using '\n'. This tautological definition
   // works because the compiler that compiles our compiler knows
@@ -118,6 +127,37 @@ static int read_escaped_char(char *p) {
   // for more info, read "Reflections on Trusting Trust" by Ken Thompson.
   // https://angold4.org/cs/uc/thompson1984.pdf
   // and this article: https://angold4.org/cs/docs/weicc/1Thompson1984.html
+
+  if ('0' <= *p && *p <= '7') {
+    // Read an octal number (3 digits?)
+    int c = *p++ - '0';
+    if ('0' <= *p && *p <= '7') {
+      c = (c << 3) + (*p++ - '0');
+      if ('0' <= *p && *p <= '7') {
+	c = (c << 3) + (*p++ - '0');
+      }
+    }
+    *new_pos = p;
+    return c;
+  }
+
+  if (*p == 'x') {
+    // Read a hexadecimal number.
+    p++;
+    if (!isxdigit(*p)) {
+      // checks for hexadecimal digits
+      error_at(p, "invalid hex escape sequence");
+    }
+
+    int c = 0;
+    for (; isxdigit(*p); p++) {
+      c = (c << 4) + from_hex(*p);
+    }
+    *new_pos = p;
+    return c;
+  }
+
+  *new_pos = p + 1; // (p + 2)
 
   switch(*p)  {
     case 'a': return '\a';
@@ -154,8 +194,7 @@ static Token *read_string_literal(char *start) {
 
   for (char *p = start + 1; p < end;) {
     if (*p == '\\') {
-      buf[len++] = read_escaped_char(p+1);
-      p += 2;
+      buf[len++] = read_escaped_char(&p, p+1);
     } else {
       buf[len++] = *p++;
     }
