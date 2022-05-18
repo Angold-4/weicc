@@ -1,7 +1,11 @@
 #include "weicc.h"
 
+// Input filename
+static char *current_filename;
+
 // Input string
 static char *current_input;
+
 
 // Reports an error and exit.
 void error(char *fmt, ...) {
@@ -12,10 +16,38 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-// Reports an error location and exit.
+// Reports an error message in the following format and exit.
+//
+// foo.c:10: x = y + 1;
+//               ^ <error message here>
 static void verror_at(char *loc, char *fmt, va_list ap) {
-  int pos = loc - current_input;
-  fprintf(stderr, "%s\n", current_input);
+
+  // #1 find a line containing `loc`
+  char *line = loc;
+  while (current_input < line && line[-1] != '\n')
+    // from line end to begin, scan
+    line--;
+
+  // line is the begin of the line
+
+  char *end = loc;
+  while (*end != '\n')
+    end++;
+
+  // #2 Get a line number
+  int line_no = 1;
+  for (char *p = current_input; p < line; p++) {
+    if (*p == '\n') {
+      line_no++;
+    }
+  }
+
+  // #3 Print out the line
+  int indent = fprintf(stderr, "%s:%d: ", current_filename, line_no);
+  fprintf(stderr, "%.*s\n", (int)(end - line), line); // from end-lne to line
+
+  // #4 Show the error message
+  int pos = loc - line + indent;   // prefix
   fprintf(stderr, "%*s", pos, ""); // print pos spaces.
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
@@ -218,14 +250,18 @@ static void convert_keywords(Token* tok) {
 // head -> tok1 -> tok2 -> ... -> tokEOF
 
 // Tokenize `current_input` and returns new tokens.
-Token *tokenize(char *p) {
+static Token *tokenize(char *filename, char *p) {
+  current_filename = filename;
   current_input = p;
   Token head = {};
   Token *cur = &head;
 
   while (*p) {
-    // Skip whitespace characters.
     if (isspace(*p)) {
+      // checks for white-space characters.  
+      // In the "C" and "POSIX" locales, these are: 
+      // space, form-feed ('\f'), newline ('\n'), carriage return ('\r'),
+      // horizontal tab ('\t'), and vertical tab ('\v').      
       p++;
       continue;
     }
@@ -260,7 +296,6 @@ Token *tokenize(char *p) {
       continue;
     }
 
-
     // Punctuators
     int punct_len = read_punct(p);
     if (punct_len) {
@@ -275,4 +310,49 @@ Token *tokenize(char *p) {
   cur = cur->next = new_token(TK_EOF, p, p);
   convert_keywords(head.next);
   return head.next;
+}
+
+// Returns the contents of a given file.
+static char *read_file(char *path) {
+  FILE *fp;
+
+  if (strcmp(path, "-") == 0) {
+    // By convention, read from stdin if a given filename is "-"
+    fp = stdin;
+  } else {
+    fp = fopen(path, "r");
+    if (!fp) 
+      error("cannot open %s: %s", path, strerror(errno));
+  }
+
+  char *buf;
+  size_t buflen;
+  FILE *out = open_memstream(&buf, &buflen);
+  
+  // Read the entire file
+  for (;;) {
+    char buf2[4096];
+    int n = fread(buf2, 1, sizeof(buf2), fp);
+    if (n == 0) break; // read 0 items
+
+    fwrite(buf2, 1, n, out);
+  }
+
+  if (fp != stdin) 
+    fclose(fp);
+
+  // Make sure that the last line is properly terminated with '\n'
+  fflush(out);
+  // fflush forces a write of all user-space buffered data for the given output
+
+  if (buflen == 0 || buf[buflen-1] != '\n')
+    fputc('\n', out);
+  fputc('\0', out);
+  fclose(out);
+
+  return buf; // return the buffer pointer
+}
+
+Token *tokenize_file(char *path) {
+  return tokenize(path, read_file(path));
 }

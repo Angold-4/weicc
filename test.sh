@@ -17,7 +17,9 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./weicc "$input" > tmp.s || exit
+  # read from stdin
+  echo "$input" | ./weicc - > tmp.s || exit
+  # ./weicc "$input" > tmp.s || exit
   gcc -static -o tmp tmp.s tmp2.o
   ./tmp
   actual="$?"
