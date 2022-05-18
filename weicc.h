@@ -101,6 +101,7 @@ typedef enum {
   ND_LE,        // <=
   ND_VAR,       // Variable
   ND_EXPR_STMT, // Expression Statement
+  ND_STMT_EXPR, // Statement Expression
   ND_NUM,       // Integer
   ND_ERR,       // Error
 } NodeKind;
@@ -125,6 +126,7 @@ struct Node {
   Node *cond;
   Node *then;
   Node *els;
+
   // For statement
   Node *init;
   Node *inc;
