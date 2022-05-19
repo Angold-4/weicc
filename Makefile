@@ -9,6 +9,7 @@ $(OBJS): weicc.h
 
 test: weicc
 	./test.sh
+	./test-driver.sh
 
 clean:
 	rm -f weicc *.o *~ tmp*

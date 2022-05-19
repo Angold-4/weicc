@@ -18,7 +18,7 @@ assert() {
   input="$2"
 
   # read from stdin
-  echo "$input" | ./weicc - > tmp.s || exit
+  echo "$input" | ./weicc -o tmp.s - || exit
   # ./weicc "$input" > tmp.s || exit
   gcc -static -o tmp tmp.s tmp2.o
   ./tmp
