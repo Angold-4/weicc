@@ -112,6 +112,7 @@ static Obj *new_gvar(char *name, Type *ty) {
   Obj *var = new_var(name, ty);
   // -> * -> * -> * -> ... -> *
   var->next = globals;
+  // note that the new_gvar will make all function reversal
   globals = var; // update the global variable linked list
   return var;
 }

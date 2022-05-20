@@ -257,6 +257,28 @@ static Token *tokenize(char *filename, char *p) {
   Token *cur = &head;
 
   while (*p) {
+    // Skip the line comments
+    if (startswith(p, "//")) {
+      p += 2;
+      while (*p != '\n') {
+	p++;
+      }
+      continue;
+    }
+
+    // Skip block comments
+    if (startswith(p, "/*")) {
+      char *q = strstr(p + 2, "*/");
+      // The strstr() function finds the first occurrence of the substring 
+      // needle in the string haystack
+      if (!q) {
+	error_at(p, "unclosed block comment");
+      }
+
+      p = q + 2;
+      continue;
+   }
+
     if (isspace(*p)) {
       // checks for white-space characters.  
       // In the "C" and "POSIX" locales, these are: 
