@@ -17,11 +17,34 @@
 
 #include "weicc.h"
 
+// Scope:
+//
+// <---- Inner -----> Outer
+// SC1 -> SC2 -> SC3 -> ... -> SCn
+// var1   var2   var3          varn
+
+// Scope for local or global variables
+typedef struct VarScope VarScope;
+struct VarScope {
+  VarScope *next;
+  char *name;
+  Obj *var;
+};
+
+// Represents a block scope
+typedef struct Scope Scope;
+struct Scope {
+  Scope *next;
+  VarScope *vars;
+};
+
 
 // All local variable instances created during parsing are
 // accumulated to this list.
 static Obj *locals;
 static Obj *globals;
+
+static Scope *scope = &(Scope){};
 
 static Type *declspec(Token **rest, Token *tok);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
@@ -41,18 +64,26 @@ static Node *primary(Token **rest, Token *tok);
 static Node *funcall(Token **rest, Token *tok);
 
 
+static void enter_scope(void) {
+  Scope *sc = calloc(1, sizeof(Scope));
+  sc->next = scope;
+  scope = sc; // add to the beginning
+}
+
+static void leave_scope(void) {
+  // outer scope
+  scope = scope->next;
+}
+
 // Find a local variable by name
 static Obj *find_var(Token *tok) {
-  // local variables first
-  for (Obj *var = locals; var; var = var->next) {
-    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
-      return var; // Obj
-  }
 
-  // then global variables
-  for (Obj *var = globals; var; var = var->next) {
-    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
-      return var; // Obj
+  for (Scope *sc = scope; sc; sc = sc->next) {
+    // for each scope (from inner to outer) (enter_scope)
+    for (VarScope *sc2 = sc->vars; sc2; sc2 = sc2->next) {
+      if (equal(tok, sc2->name))
+	return sc2->var;
+    }
   }
 
   return NULL;
@@ -90,11 +121,21 @@ static Node *new_var_node(Obj *var, Token *tok) {
   return node;
 }
 
+static VarScope *push_scope(char *name, Obj *var) {
+  VarScope *sc = calloc(1, sizeof(VarScope));
+  sc->name = name;
+  sc->var = var;
+  sc->next = scope->vars;
+  scope->vars = sc;
+  return sc;
+}
+
 static Obj *new_var(char *name, Type* ty) {
   // helper function
   Obj *var = calloc(1, sizeof(Obj));
   var->name = name; // name = .L..%id (in string)
   var->ty = ty;
+  push_scope(name, var); // VarScope
   return var;
 }
 
@@ -112,6 +153,7 @@ static Obj *new_gvar(char *name, Type *ty) {
   Obj *var = new_var(name, ty);
   // -> * -> * -> * -> ... -> *
   var->next = globals;
+  // append it to the beginning
   // note that the new_gvar will make all function reversal
   globals = var; // update the global variable linked list
   return var;
@@ -349,6 +391,9 @@ static Node *compound_stmt(Token **rest, Token *tok) {
   Node head = {};
   Node *cur = &head; // linked list
 
+  enter_scope(); // create a new scope (sc)
+  // and set scope = sc
+
   while (!equal(tok, "}")) {
     // try to generate stmt nodes
     if (is_typename(tok)) {
@@ -358,6 +403,8 @@ static Node *compound_stmt(Token **rest, Token *tok) {
     }
     add_type(cur); // each stmt / declaration
   }
+
+  leave_scope(); // outer scope
 
   node->body = head.next; // only block
   *rest = tok->next; // jump "}"
@@ -699,18 +746,21 @@ static Token *function(Token *tok, Type *basety) {
   // then update its variable in that locals
   // finally store it in the fn->locals
 
+  enter_scope();
+
   create_param_lvars(ty->params); // will update locals
   fn->params = locals;
 
   tok = skip(tok, "{"); // current program must inside "{" and "}"
   fn->body = compound_stmt(&tok, tok); // also parse locals
   fn->locals = locals; // notice that it will treat params as locals
+  
+  leave_scope();
 
   return tok; // updated token list
 }
 
 static Token *global_variable(Token *tok, Type *basety) {
-
   bool first = true;
 
   while (!consume(&tok, tok, ";")) {
