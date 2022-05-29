@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 tmp=`mktemp -d /tmp/weicc-test-XXXXXX`
 
