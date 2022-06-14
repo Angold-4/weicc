@@ -107,6 +107,8 @@ static void store(Type *ty) {
 // every time this function wants to update %rax
 // it need to store prev rax by pushing it into stack
 static void gen_expr(Node *node) {
+  println("  .loc 1 %d", node->tok->line_no);
+
   // unary / primary
   switch (node->kind) {
   case ND_NUM:
@@ -220,6 +222,9 @@ static void gen_expr(Node *node) {
 }
 
 static void gen_stmt(Node *node) {
+
+  println("  .loc 1 %d", node->tok->line_no);
+
   switch(node->kind) {
     case ND_IF: {
       int c = count();

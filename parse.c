@@ -317,6 +317,7 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
     // the actual array value at runtime is stored in the stack
   }
 
+  // just ty
   *rest = tok;
   return ty;
 }
