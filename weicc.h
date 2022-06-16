@@ -90,6 +90,7 @@ typedef enum {
   ND_MUL,       // *
   ND_DIV,       // /
   ND_ASSIGN,    // =
+  ND_COMMA,     // ,
   ND_RETURN,    // "return"
   ND_ADDR,      // unary &
   ND_DEREF,     // unary *

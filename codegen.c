@@ -67,6 +67,11 @@ static void gen_addr(Node* node) {
       gen_expr(node->lhs);
       // stop until it reach a variable
       return;
+    case ND_COMMA:
+      gen_expr(node->lhs);
+      gen_addr(node->rhs);
+      // return its address
+      return;
     default:
       break;
   }
@@ -154,6 +159,10 @@ static void gen_expr(Node *node) {
       gen_stmt(n);
     }
     return;
+  case ND_COMMA:
+    gen_expr(node->lhs);
+    gen_expr(node->rhs);
+    return;
   case ND_FUNCALL: {
     int nargs = 0;
 
@@ -175,7 +184,7 @@ static void gen_expr(Node *node) {
     break;
   }
 
-  // binary expression
+  // binary expressions
   // DFS
   gen_expr(node->rhs);
   push();      // push rax into stack (store)
@@ -282,6 +291,7 @@ static void gen_stmt(Node *node) {
     default:
       break;
   }
+
   error_tok(node->tok, "invalid statement");
 }
 

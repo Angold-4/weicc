@@ -27,7 +27,7 @@ int sub_char(char a, char b, char c) {
 
 int fib(int x) {
   if (x<=1)
-    return n;
+    return 1;
   return fib(x-1) + fib(x-2);
 }
 

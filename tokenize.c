@@ -16,7 +16,7 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-// Reports an error message in the following format and exit.
+// Reports an error message in the following fxormat and exit.
 //
 // foo.c:10: x = y + 1;
 //               ^ <error message here>

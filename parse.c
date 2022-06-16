@@ -499,9 +499,17 @@ static Node *expr_stmt(Token **rest, Token *tok) {
   return node;
 }
 
-// expr = assign
+// expr = assign ("," expr)? 
 static Node *expr(Token **rest, Token *tok) {
-  return assign(rest, tok);
+  Node *node = assign(&tok, tok);
+
+  if (equal(tok, ","))
+    // the comma operator
+    // (1, 2, 3) ->return 3
+    return new_binary(ND_COMMA, node, expr(rest, tok->next), tok);
+
+  *rest = tok;
+  return node;
 }
 
 // assign = equality ("=" assign)?
@@ -572,6 +580,7 @@ static Node *add(Token **rest, Token *tok) {
   Node *node = mul(&tok, tok);
 
   for (;;) {
+    // nested tree
     Token *start = tok;
     if (equal(tok, "+")) {
       node = new_add(node, mul(&tok, tok->next), start);
@@ -729,6 +738,7 @@ static Node *funcall(Token **rest, Token *tok) {
   *rest = skip(tok, ")");
 
   // build the node
+  // do not check whether it is a illegal funcall
   Node *node = new_node(ND_FUNCALL, start);
   node->funcname = strndup(start->loc, start->len);
   node->args = head.next; // linked list
@@ -739,7 +749,7 @@ static Token *function(Token *tok, Type *basety) {
   Type *ty = declarator(&tok, tok, basety);  
 
   Obj *fn = new_gvar(get_ident(ty->name), ty); // key:
-  // already append that functioin into globals list
+  // already append that function into globals list
   fn->is_function = true;
 
   locals = NULL; // key:
