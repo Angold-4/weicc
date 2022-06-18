@@ -72,6 +72,10 @@ static void gen_addr(Node* node) {
       gen_addr(node->rhs);
       // return its address
       return;
+    case ND_MEMBER:
+      gen_addr(node->lhs);
+      println("  add $%d, %%rax", node->member->offset);
+      return;
     default:
       break;
   }
@@ -124,12 +128,14 @@ static void gen_expr(Node *node) {
     println("  neg %%rax");
     return;
   case ND_VAR:
+  case ND_MEMBER:
     // the behaviour is just like *&
     gen_addr(node); // this gen will put the address of that var into %rax
     // printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
     load(node->ty);
     return;
   case ND_DEREF:
+    // unary expression
     // two cases
     // #1. On the left (lvar):
     // (finally)will switch to ND_VAR and then lea the address into %rax
@@ -325,6 +331,7 @@ static void emit_data(Obj *prog) {
 	println("  .byte %d", var->init_data[i]); // ascii
       }
     } else {
+      // no initialized data
       println("  .zero %d", var->ty->size);
     }
   }

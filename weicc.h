@@ -10,6 +10,7 @@
 
 typedef struct Node Node;
 typedef struct Type Type;
+typedef struct Member Member;
 
 //
 // strings.c
@@ -91,6 +92,7 @@ typedef enum {
   ND_DIV,       // /
   ND_ASSIGN,    // =
   ND_COMMA,     // ,
+  ND_MEMBER,    // . (struct member access)
   ND_RETURN,    // "return"
   ND_ADDR,      // unary &
   ND_DEREF,     // unary *
@@ -121,6 +123,10 @@ struct Node {
   Node *rhs;     // Right-hand side
 
   Node *body;    // Used if kind == ND_BLOCK
+
+  // Struct member access
+  Member *member;
+
   char *funcname;
   Node *args;    
   Obj *var;      // Used if kind == ND_VAR
@@ -149,6 +155,7 @@ typedef enum {
   TY_PTR,
   TY_FUNC,
   TY_ARRAY,
+  TY_STRUCT,
 } TypeKind;
 
 struct Type {
@@ -172,9 +179,20 @@ struct Type {
   // Array
   int array_len;
 
+  Member *members;
+
   Type *return_ty;
   Type *params;
   Type *next;
+};
+
+
+// Struct member
+struct Member {
+  Member *next;
+  Type *ty;
+  Token *name;
+  int offset;
 };
 
 extern Type *ty_char;
