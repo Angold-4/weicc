@@ -129,6 +129,7 @@ static void gen_expr(Node *node) {
     return;
   case ND_VAR:
   case ND_MEMBER:
+    // a pointer is also a variable
     // the behaviour is just like *&
     gen_addr(node); // this gen will put the address of that var into %rax
     // printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
@@ -310,6 +311,7 @@ static void assign_lvar_offsets(Obj *prog) {
     int offset = 0; // After parsing all local variables...
     for (Obj *var = fn->locals; var; var = var->next) {
       offset += var->ty->size;
+      offset = align_to(offset, var->ty->align);
       var->offset = -offset;
     }
     fn->stack_size = align_to(offset, 16);
@@ -378,7 +380,6 @@ static void emit_text(Obj *prog) {
 
 void codegen(Obj *prog, FILE *out) {
   output_file = out;
-
   assign_lvar_offsets(prog);
   emit_data(prog);
   emit_text(prog);

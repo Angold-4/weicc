@@ -143,6 +143,7 @@ static Obj *new_var(char *name, Type* ty) {
 static Obj *new_lvar(char *name, Type *ty) {
   // new local variable
   Obj *var = new_var(name, ty);
+  // append to the front (reversed)
   var->is_local = true;
   // -> * -> * -> * -> ... -> *
   var->next = locals;
