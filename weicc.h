@@ -161,7 +161,8 @@ typedef enum {
 struct Type {
   TypeKind kind;
 
-  int size; // sizeof() return value
+  int size;  // sizeof() return value
+  int align; // for sizeof() (specifically, struct sizeof)
 
   // Pointer-to or array-to type. We intentionally use the same
   // member to reprersent pointer / array duality in C.
@@ -210,3 +211,4 @@ void add_type(Node *node);
 //
 
 void codegen(Obj *prog, FILE *out);
+int align_to(int n, int align);

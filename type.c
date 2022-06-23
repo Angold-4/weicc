@@ -4,8 +4,17 @@
 // This type system only used in type
 // no relationship with the actual value
 
-Type *ty_int = &(Type){TY_INT, 8};
-Type *ty_char = &(Type){TY_CHAR, 1};
+Type *ty_int = &(Type){TY_INT, 8, 8};
+Type *ty_char = &(Type){TY_CHAR, 1, 1};
+
+static Type *new_type(TypeKind kind, int size, int align) {
+  // allocate new heap memory for this type
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = kind;
+  ty->size = size;
+  ty->align = align;
+  return ty;
+}
 
 bool is_integer(Type *ty) {
   return ty->kind == TY_INT || ty->kind == TY_CHAR;
@@ -20,19 +29,14 @@ Type *copy_type(Type *ty) {
 
 Type *pointer_to(Type *base) {
   // 1. allocate new heap memory for this type
-  Type *ty = calloc(1, sizeof(Type));
-  ty->kind = TY_PTR;
+  Type *ty = new_type(TY_PTR, 8, 8);
   // 2. It pointes to the base address
   ty->base = base;
-  ty->size = 8;
   return ty; // return its address as pointer
 }
 
 Type *array_of(Type *base, int len) {
-  Type *ty = calloc(1, sizeof(Type));
-
-  ty->kind = TY_ARRAY;
-  ty->size = base->size * len;
+  Type *ty = new_type(TY_ARRAY, base->size * len, base->align);
   ty->base = base;
   ty->array_len = len;
 
