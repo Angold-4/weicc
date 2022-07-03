@@ -777,13 +777,13 @@ static Node *struct_ref(Node *lhs, Token *tok) {
 }
 
 
-// postfix = primary ("[" expr "]" | "." ident)*
+// postfix = primary ("[" expr "]" | "." ident | "->" ident)*
 static Node *postfix(Token **rest, Token *tok) {
   Node *node = primary(&tok, tok);
 
   for (;;) {
     if (equal(tok, "[")) {
-      // syntax sugar
+      // syntatic sugar
       // x[y] == *(x+y)
       Token *start = tok;
       Node *idx = expr(&tok, tok->next);
@@ -798,6 +798,17 @@ static Node *postfix(Token **rest, Token *tok) {
       continue;
     }
 
+    if (equal(tok, "->")) {
+      // syntatic sugar
+      // x-> == (*x).y
+      node = new_unary(ND_DEREF, node, tok); // dereference it first (*x)
+      node = struct_ref(node, tok->next);
+      tok = tok->next->next;
+      continue;
+    }
+
+
+    // no others
     *rest = tok;
     return node;
   }

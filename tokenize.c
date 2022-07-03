@@ -131,12 +131,17 @@ static int from_hex(char c) {
 
 
 // Read a punctuator token from p and returns its length.
+// punctuator-> any character(s) which is not a space or an alphanumric charactor
 static int read_punct(char *p) {
-  if (startswith(p, "==") || startswith(p, "!=") ||
-      startswith(p, "<=") || startswith(p, ">="))
-    return 2;
+  static char *kw[] = {"==", "!=", "<=", ">=", "->"};
 
-  return ispunct(*p) ? 1 : 0;
+  for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
+    if (startswith(p, kw[i])) {
+      return strlen(kw[i]);  // 2
+    }
+  }
+
+  return ispunct(*p) ? 1 : 0; // single
 }
 
 static bool is_keyword(Token* tok) {
