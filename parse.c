@@ -802,23 +802,29 @@ static Node *struct_ref(Node *lhs, Token *tok) {
   if (lhs->ty->kind != TY_STRUCT && lhs->ty->kind != TY_UNION)
     error_tok(lhs->tok, "not a struct nor a union");
 
-  Node *node = new_unary(ND_MEMBER, lhs, tok);
-  node->member = get_struct_member(lhs->ty, tok);
+  Node *node = new_unary(ND_MEMBER, lhs, tok); // lhs stands for the address
+  node->member = get_struct_member(lhs->ty, tok); // already calculate(find) that address
+  // unlike array (need to gen code to calculate it)
   return node;
 }
 
 
 // postfix = primary ("[" expr "]" | "." ident | "->" ident)*
 static Node *postfix(Token **rest, Token *tok) {
-  Node *node = primary(&tok, tok);
+
+  Node *node = primary(&tok, tok); // pointer (in array -> start position)
 
   for (;;) {
     if (equal(tok, "[")) {
       // syntatic sugar
       // x[y] == *(x+y)
+      // there must be add !
       Token *start = tok;
-      Node *idx = expr(&tok, tok->next);
+
+      Node *idx = expr(&tok, tok->next); // get the value inside "[" "]"
+
       tok = skip(tok, "]");
+      // new_add will also handle the pointer calculation
       node = new_unary(ND_DEREF, new_add(node, idx, start), start);
       continue;
     }

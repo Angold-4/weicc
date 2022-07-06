@@ -73,8 +73,8 @@ static void gen_addr(Node* node) {
       // return its address
       return;
     case ND_MEMBER:
-      gen_addr(node->lhs);
-      println("  add $%d, %%rax", node->member->offset);
+      gen_addr(node->lhs); // a pointer
+      println("  add $%d, %%rax", node->member->offset); // already calculated(find)
       return;
     default:
       break;
@@ -85,7 +85,7 @@ static void gen_addr(Node* node) {
 
 // Load a value from where %rax is pointing to.
 static void load(Type *ty) {
-  if (ty->kind == TY_ARRAY) {
+  if (ty->kind == TY_ARRAY || ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
     // if it is an array, do not attempt to load a value to the
     // register because in general we can't load an entire array to a
     // register. As a result, the result of an evaluation of an array
@@ -104,9 +104,14 @@ static void load(Type *ty) {
 
 // Store %rax to an address that the stack top is pointing to.
 static void store(Type *ty) {
-  pop("%rdi");
+  pop("%rdi"); // address
 
-  if (ty->size == 1)
+  if (ty->kind == TY_STRUCT || ty->kind == TY_UNION) {
+    for (int i = 0; i < ty->size; i++) { 
+      println("  mov %d(%%rax), %%r8b", i); // all its bytes member
+      println("  mov %%r8b, %d(%%rdi)", i);
+    }
+  } else if (ty->size == 1)
     println("  mov %%al, (%%rdi)");
   else
     println("  mov %%rax, (%%rdi)");
@@ -116,7 +121,7 @@ static void store(Type *ty) {
 // every time this function wants to update %rax
 // it need to store prev rax by pushing it into stack
 static void gen_expr(Node *node) {
-  println("  .loc 1 %d", node->tok->line_no);
+  println("  .loc 1 %d", node->tok->line_no); // gcc debug
 
   // unary / primary
   switch (node->kind) {
@@ -128,14 +133,16 @@ static void gen_expr(Node *node) {
     println("  neg %%rax");
     return;
   case ND_VAR:
-  case ND_MEMBER:
+  case ND_MEMBER: // for struct and union
     // a pointer is also a variable
     // the behaviour is just like *&
     gen_addr(node); // this gen will put the address of that var into %rax
     // printf("  mov (%%rax), %%rax\n"); // get the value store in the stack
     load(node->ty);
+    // if it is an union or struct/array
+    // we won't load anything but it address in rax
     return;
-  case ND_DEREF:
+  case ND_DEREF: // pointer / array (also kind of a pointer)
     // unary expression
     // two cases
     // #1. On the left (lvar):
@@ -151,6 +158,7 @@ static void gen_expr(Node *node) {
     return;
   case ND_ASSIGN:
     gen_addr(node->lhs);
+
     push();
 
     gen_expr(node->rhs); // acutal value (r)
