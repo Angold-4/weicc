@@ -48,7 +48,10 @@ int main() {
   ASSERT(3, ({ int x=2; { x=3; } x; }));
 
   ASSERT(7, ({ int x; int y; char z; char *a=&y; char *b=&z; b-a; }));
+
   ASSERT(1, ({ int x; char y; int z; char *a=&y; char *b=&z; b-a; }));
+
+  ASSERT(16, ({ struct {char a; long b;} x; sizeof(x); }));
 
   printf("OK\n");
   return 0;
