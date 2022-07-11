@@ -295,7 +295,7 @@ static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
   error_tok(tok, "invalid operands");
 }
 
-// declspec = "int" | "char" | "long" | struct-decl | union-decl
+// declspec = "int" | "char" | "long" | "short" |struct-decl | union-decl
 static Type *declspec(Token **rest, Token *tok) {
   // return a type
   if (equal(tok, "char")) {
@@ -306,6 +306,11 @@ static Type *declspec(Token **rest, Token *tok) {
   if (equal(tok, "int")) {
     *rest = tok->next;
     return ty_int;
+  }
+
+  if (equal(tok, "short")) {
+    *rest = tok->next;
+    return ty_short;
   }
 
   if (equal(tok, "long")) {
@@ -437,7 +442,7 @@ static Node *declaration(Token **rest, Token *tok) {
 // Returns true if a given token represents a type.
 static bool is_typename(Token *tok) {
   return equal(tok, "char") || equal(tok, "int") || equal(tok, "struct") ||
-    equal(tok, "union") || equal(tok, "long");
+    equal(tok, "union") || equal(tok, "long") || equal(tok, "short");
 }
 
 

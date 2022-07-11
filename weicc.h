@@ -160,6 +160,7 @@ Obj *parse(Token *tok);
 
 typedef enum {
   TY_CHAR,
+  TY_SHORT,
   TY_INT,
   TY_LONG,
   TY_PTR,
@@ -207,7 +208,10 @@ struct Member {
   int offset;
 };
 
+// extern: declare a global variable without any memory assigned to it
+// so that we can access variables across C files
 extern Type *ty_char;
+extern Type *ty_short;
 extern Type *ty_int;
 extern Type *ty_long;
 
