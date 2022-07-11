@@ -1,52 +1,56 @@
 #include "test.h"
 
+int g1, g2[4];
+
 int main() {
-  ASSERT(1, ({ struct {int a; int b;} x; x.a=1; x.b=2; x.a; }));
-  ASSERT(2, ({ struct {int a; int b;} x; x.a=1; x.b=2; x.b; }));
-  ASSERT(1, ({ struct {char a; int b; char c;} x; x.a=1; x.b=2; x.c=3; x.a; }));
-  ASSERT(2, ({ struct {char a; int b; char c;} x; x.b=1; x.b=2; x.c=3; x.b; }));
-  ASSERT(3, ({ struct {char a; int b; char c;} x; x.a=1; x.b=2; x.c=3; x.c; }));
+  ASSERT(3, ({ int a; a=3; a; }));
+  ASSERT(3, ({ int a=3; a; }));
+  ASSERT(8, ({ int a=3; int z=5; a+z; }));
 
-  ASSERT(0, ({ struct {char a; char b;} x[3]; char *p=x; p[0]=0; x[0].a; }));
-  ASSERT(1, ({ struct {char a; char b;} x[3]; char *p=x; p[1]=1; x[0].b; }));
-  ASSERT(2, ({ struct {char a; char b;} x[3]; char *p=x; p[2]=2; x[1].a; }));
-  ASSERT(3, ({ struct {char a; char b;} x[3]; char *p=x; p[3]=3; x[1].b; }));
+  ASSERT(3, ({ int a=3; a; }));
+  ASSERT(8, ({ int a=3; int z=5; a+z; }));
+  ASSERT(6, ({ int a; int b; a=b=3; a+b; }));
+  ASSERT(3, ({ int foo=3; foo; }));
+  ASSERT(8, ({ int foo123=3; int bar=5; foo123+bar; }));
 
-  ASSERT(6, ({ struct {char a[3]; char b[5];} x; char *p=&x; x.a[0]=6; p[0]; }));
-  ASSERT(7, ({ struct {char a[3]; char b[5];} x; char *p=&x; x.b[0]=7; p[3]; }));
+  ASSERT(4, ({ int x; sizeof(x); }));
+  ASSERT(4, ({ int x; sizeof x; }));
+  ASSERT(8, ({ int *x; sizeof(x); }));
+  ASSERT(16, ({ int x[4]; sizeof(x); }));
+  ASSERT(48, ({ int x[3][4]; sizeof(x); }));
+  ASSERT(16, ({ int x[3][4]; sizeof(*x); }));
+  ASSERT(4, ({ int x[3][4]; sizeof(**x); }));
+  ASSERT(5, ({ int x[3][4]; sizeof(**x) + 1; }));
+  ASSERT(5, ({ int x[3][4]; sizeof **x + 1; }));
+  ASSERT(4, ({ int x[3][4]; sizeof(**x + 1); }));
+  ASSERT(4, ({ int x=1; sizeof(x=2); }));
+  ASSERT(1, ({ int x=1; sizeof(x=2); x; }));
 
-  ASSERT(6, ({ struct { struct { char b; } a; } x; x.a.b=6; x.a.b; }));
+  ASSERT(0, g1);
+  ASSERT(3, ({ g1=3; g1; }));
+  ASSERT(0, ({ g2[0]=0; g2[1]=1; g2[2]=2; g2[3]=3; g2[0]; }));
+  ASSERT(1, ({ g2[0]=0; g2[1]=1; g2[2]=2; g2[3]=3; g2[1]; }));
+  ASSERT(2, ({ g2[0]=0; g2[1]=1; g2[2]=2; g2[3]=3; g2[2]; }));
+  ASSERT(3, ({ g2[0]=0; g2[1]=1; g2[2]=2; g2[3]=3; g2[3]; }));
 
-  ASSERT(8, ({ struct {int a;} x; sizeof(x); }));
-  ASSERT(16, ({ struct {int a; int b;} x; sizeof(x); }));
-  ASSERT(16, ({ struct {int a, b;} x; sizeof(x); }));
-  ASSERT(24, ({ struct {int a[3];} x; sizeof(x); }));
-  ASSERT(32, ({ struct {int a;} x[4]; sizeof(x); }));
-  ASSERT(48, ({ struct {int a[3];} x[2]; sizeof(x); }));
-  ASSERT(2, ({ struct {char a; char b;} x; sizeof(x); }));
-  ASSERT(0, ({ struct {} x; sizeof(x); }));
+  ASSERT(4, sizeof(g1));
+  ASSERT(16, sizeof(g2));
 
-  ASSERT(16, ({ struct {char a; int b;} x; sizeof(x); }));
-  ASSERT(16, ({ struct {int a; char b;} x; sizeof(x); }));
+  ASSERT(1, ({ char x=1; x; }));
+  ASSERT(1, ({ char x=1; char y=2; x; }));
+  ASSERT(2, ({ char x=1; char y=2; y; }));
 
-  ASSERT(16, ({ struct t {int a; int b;} x; struct t y; sizeof(y); }));
-  ASSERT(16, ({ struct t {int a; int b;}; struct t y; sizeof(y); }));
-  ASSERT(2, ({ struct t {char a[2];}; { struct t {char a[4];}; } struct t y; sizeof(y); }));
-  ASSERT(3, ({ struct t {int x;}; int t=1; struct t y; y.x=2; t+y.x; }));
+  ASSERT(1, ({ char x; sizeof(x); }));
+  ASSERT(10, ({ char x[10]; sizeof(x); }));
 
-  ASSERT(3, ({ struct t {char a;} x; struct t *y = &x; x.a=3; y->a; }));
-  ASSERT(3, ({ struct t {char a;} x; struct t *y = &x; y->a=3; x.a; }));
+  ASSERT(2, ({ int x=2; { int x=3; } x; }));
+  ASSERT(2, ({ int x=2; { int x=3; } int y=4; x; }));
+  ASSERT(3, ({ int x=2; { x=3; } x; }));
 
-  ASSERT(3, ({ struct {int a,b;} x,y; x.a=3; y=x; y.a; }));
-  ASSERT(7, ({ struct t {int a,b;}; struct t x; x.a=7; struct t y; struct t *z=&y; *z=x; y.a; }));
-  ASSERT(7, ({ struct t {int a,b;}; struct t x; x.a=7; struct t y, *p=&x, *q=&y; *q=*p; y.a; }));
-  ASSERT(5, ({ struct t {char a, b;} x, y; x.a=5; y=x; y.a; }));
-
-  ASSERT(3, ({ struct {int a,b;} x,y; x.a=3; y=x; y.a; }));
-  ASSERT(7, ({ struct t {int a,b;}; struct t x; x.a=7; struct t y; struct t *z=&y; *z=x; y.a; }));
-  ASSERT(7, ({ struct t {int a,b;}; struct t x; x.a=7; struct t y, *p=&x, *q=&y; *q=*p; y.a; }));
-  ASSERT(5, ({ struct t {char a, b;} x, y; x.a=5; y=x; y.a; }));
+  ASSERT(7, ({ int x; int y; char z; char *a=&y; char *b=&z; b-a; }));
+  ASSERT(1, ({ int x; char y; int z; char *a=&y; char *b=&z; b-a; }));
 
   printf("OK\n");
   return 0;
 }
+

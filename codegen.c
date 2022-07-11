@@ -6,6 +6,7 @@ static int depth;
 
 // only support up to 6 arguments
 static char *argreg8[] = {"%dil", "%sil", "%dl", "%cl", "%r8b", "%r9b"};
+static char *argreg32[] = {"%edi", "%esi", "%edx", "%ecx", "%r8d", "%r9d"};
 static char *argreg64[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 
 static Obj *current_fn;
@@ -98,7 +99,9 @@ static void load(Type *ty) {
 
   if (ty->size == 1)
     println("  movsbq (%%rax), %%rax");
-  else 
+  else if (ty->size == 4)
+    println("  movsxd (%%rax), %%rax");
+  else  // 8 bytes
     println("  mov (%%rax), %%rax");
 }
 
@@ -111,8 +114,14 @@ static void store(Type *ty) {
       println("  mov %d(%%rax), %%r8b", i); // all its bytes member
       println("  mov %%r8b, %d(%%rdi)", i);
     }
-  } else if (ty->size == 1)
+    return;
+  } 
+
+  if (ty->size == 1)
     println("  mov %%al, (%%rdi)");
+  else if (ty->size == 4)
+    println("  mov %%eax, (%%rdi)");
+
   else
     println("  mov %%rax, (%%rdi)");
 }
@@ -347,6 +356,23 @@ static void emit_data(Obj *prog) {
   }
 }
 
+static void store_gp(int r, int offset, int sz) {
+  // parameters in registers
+  switch(sz) {
+    case 1:
+      println("  mov %s, %d(%%rbp)", argreg8[r], offset);
+      return;
+    case 4:
+      println("  mov %s, %d(%%rbp)", argreg32[r], offset);
+      return;
+    case 8:
+      println("  mov %s, %d(%%rbp)", argreg64[r], offset);
+      return;
+  }
+  unreachable();
+}
+
+
 static void emit_text(Obj *prog) {
   for (Obj *fn = prog; fn; fn = fn->next) {
     if (!fn->is_function) continue; // global variables
@@ -364,11 +390,7 @@ static void emit_text(Obj *prog) {
     // as the local varaibles
     int i = 0; 
     for (Obj *var = fn->params; var; var = var->next) {
-      if (var->ty->size == 1) {
-	println("  mov %s, %d(%%rbp)", argreg8[i++], var->offset);
-      } else {
-	println("  mov %s, %d(%%rbp)", argreg64[i++], var->offset);
-      }
+      store_gp(i++, var->offset, var->ty->size);
     }
 
     // Emit code (body)
